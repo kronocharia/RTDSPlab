@@ -167,7 +167,7 @@ float sinegen(void)
 	float ratio;
 	ratio = (sampling_freq/sine_freq)+0.5;
 	x = (256*sine_freq*count/sampling_freq)+0.5;
-
+///////////////////////////////////
 	count++;
 	if ( x > 256 ) {
 		x -=256;
