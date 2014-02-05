@@ -18,11 +18,11 @@ float sample;
 
 /* Use this variable in your code to set the frequency of your sine wave 
    be carefull that you do not set it above the current nyquist frequency! */
-float sine_freq = 2589.0;         
+float sine_freq = 500.0;         
 
 float table[SINE_TABLE_SIZE];
-int count = 0;
-
+//int count = 0;
+float x = 0;
 /********function prototypes***********/
 float sinegen(void);
 void sine_init(void);
@@ -32,7 +32,7 @@ void main(){
 	sine_init();
 	int i;
 	
-	for(i=0; i<1000000; i++){
+	for(i=0; i<100; i++){
 		sample = sinegen();
 		printf("%4.0f ", sample);
 	}
@@ -41,20 +41,15 @@ void main(){
 /************ sinegen() ***************/   
 float sinegen(void)
 {
-	// temporary variable used to output values from function
-	float x;	
+	// x is global variable
+	float jump;		//gap to next sample in lookup table
 	
-	x = (256*sine_freq*count/sampling_freq)+0.5;
-
-	count++;
+	jump = (256*sine_freq/sampling_freq)+0.5;
+	x += jump;		//increment x by jump
 	x = (int)x%256;		//wrap round lookup table
 
-	if (x == 0){ 		
-		count = 0;		//reset counter
-	}
-		      
+	//return (x);
     return(table[(int)x]); 
-    
 }
 
 void sine_init(void){
