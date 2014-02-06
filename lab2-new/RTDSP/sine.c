@@ -79,7 +79,7 @@ int sampling_freq = 8000;
 
 // Array of data used by sinegen to generate sine. These are the initial values.                        
 float y[3] = {0,0,0};
-float x[1] = {1}; // impulse to start filter
+
 
 float a0 = 1.4142; // coefficients for difference equation
 float b0 = 0.707;
@@ -98,7 +98,7 @@ Int32 R_Gain = 2100000000;
 float sine_freq = 1000.0;         
 
 float table[SINE_TABLE_SIZE];
-int count = 0;
+float x = 0;
      
 /******************************* Function prototypes ********************************/
 void init_hardware(void);     
@@ -155,29 +155,21 @@ void init_hardware()
 }
 
 /********************************** sinegen() ***************************************/   
+
 float sinegen(void)
 {
-/*  This code produces a fixed sine of 1KHZ (if the sampling frequency is 8KHZ)
-    using a digital filter.
- 	You will need to re-write this function to produce a sine of variable frequency
- 	using a look up table instead of a filter.*/
-	
-	// temporary variable used to output values from function
-	float x;	
-	float ratio;
-	ratio = (sampling_freq/sine_freq)+0.5;
-	x = (256*sine_freq*count/sampling_freq)+0.5;
-///////////////////////////////////
-	count++;
-	if ( x > 256 ) {
-		x -=256;
-	}
-	count = count%(int)ratio;
-			      
-    return(table[(int)x]); 
+
+	// x is global variable
+	float jump;		//gap to next sample in lookup table
+
+ 	jump = (256*sine_freq/sampling_freq)+0.5;
+ 	x += jump;		//increment x by jump
+  	x = (int)x%256;		//wrap round lookup table
+  
+ 	//return (x);
+     return(table[(int)x]); 
     
 }
-
 void sine_init(void){
 	int i;
 	for(i=0; i<SINE_TABLE_SIZE; i++){
