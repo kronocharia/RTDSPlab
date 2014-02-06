@@ -159,14 +159,14 @@ void init_hardware()
 float sinegen(void)
 {
 
-	// x is global variable
-	float jump;		//gap to next sample in lookup table
+	// x is global float variable
+	float jump;												//gap to next sample in lookup table
 
- 	jump = (256*sine_freq/sampling_freq)+0.5;
- 	x += jump;		//increment x by jump
-  	x = (int)x%256;		//wrap round lookup table
+ 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq)+0.5; 	//0.5 deals with integer cast truncation
+ 	x += jump;												//increment x by jump
+  	x = (int)x%SINE_TABLE_SIZE;								//wrap round lookup table
   
- 	//return (x);
+ 															//return (x);
      return(table[(int)x]); 
     
 }
