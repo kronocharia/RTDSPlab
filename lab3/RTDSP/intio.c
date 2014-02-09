@@ -64,7 +64,8 @@ DSK6713_AIC23_CodecHandle H_Codec;
 
  /******************************* Function prototypes ********************************/
 void init_hardware(void);     
-void init_HWI(void);                   
+void init_HWI(void);      
+void ISR_AIC(void);        		//interrupt function     
 /********************************** Main routine ************************************/
 void main(){      
 
@@ -110,15 +111,22 @@ void init_hardware()
 /********************************** init_HWI() **************************************/  
 void init_HWI(void)
 {
-	IRQ_globalDisable();			// Globally disables interrupts
-	IRQ_nmiEnable();				// Enables the NMI interrupt (used by the debugger)
-	IRQ_map(IRQ_EVT_RINT1,4);		// Maps an event to a physical interrupt
-	IRQ_enable(IRQ_EVT_RINT1);		// Enables the event
-	IRQ_globalEnable();				// Globally enables interrupts
+	IRQ_globalDisable();			// Globally disables interrupts before changes are made to interrupt configurations
+	IRQ_nmiEnable();				// Enables the Non Maskable Interupts (used by the debugger)
+	IRQ_map(IRQ_EVT_RINT1,4);		// Maps an event to a physical interrupt, here maps RINT1 to priority 4
+	IRQ_enable(IRQ_EVT_RINT1);		// Enables the event symbol IRQ_EVT_RINT1 representing the event generating the interrupt
+	IRQ_globalEnable();				// Globally enables interrupts as we're done config'ing
 
 } 
 
 /******************** WRITE YOUR INTERRUPT SERVICE ROUTINE HERE***********************/  
+void ISR_AIC(void){
+	
+	mono_read_16Bit();				//read sample from codec
+	//fullwave rectify function
+	mono_write_16Bit(samp);			//write out rectified value. nb samp < 16bits
 
+
+}
 
   
