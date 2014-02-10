@@ -122,8 +122,8 @@ void init_HWI(void)
 /******************** WRITE YOUR INTERRUPT SERVICE ROUTINE HERE***********************/  
 void ISR_AIC(void){
 	
-	mono_read_16Bit();				//read sample from codec
-	//fullwave rectify function
+	mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
+	//fullwave rectify function, take absolute value of the signal amplitude
 	mono_write_16Bit(samp);			//write out rectified value. nb samp < 16bits
 
 
