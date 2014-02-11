@@ -64,7 +64,7 @@ DSK6713_AIC23_CodecHandle H_Codec;
 
  /******************************* Function prototypes ********************************/
 void init_hardware(void);     
-void init_HWI(void);      
+void init_HWI(void);      		//interrupt settings
 void ISR_AIC(void);        		//interrupt function     
 /********************************** Main routine ************************************/
 void main(){      
@@ -121,13 +121,12 @@ void init_HWI(void)
 
 /******************** WRITE YOUR INTERRUPT SERVICE ROUTINE HERE***********************/  
 void ISR_AIC(void){
-	Int16 samp;
-	samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
-	if (samp < 0) {
-		samp = samp*-1;
-	}								//fullwave rectify function, take absolute value of the signal amplitude
-	mono_write_16Bit(samp);			//write out rectified value. nb samp < 16bits
 
+	Int16 samp;
+	
+	samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
+	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
+	mono_write_16Bit(samp);			//write out rectified value. nb samp < 16bits
 
 }
 
