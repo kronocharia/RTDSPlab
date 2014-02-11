@@ -56,6 +56,9 @@
 <tool id="com.ti.rtsc.buildDefinitions.DSPBIOS_5.40.tool.108686029" name="TConf Script Compiler" superClass="com.ti.rtsc.buildDefinitions.DSPBIOS_5.40.tool"/>
 <macros expandEnvironmentMacros="true"/>
 </toolChain>
+<resourceConfiguration exclude="true" id="com.ti.ccstudio.buildDefinitions.C6000.Debug.2073104593./RTDSP/testsine.c" name="testsine.c" rcbsApplicability="disable" resourcePath="/RTDSP/testsine.c" toolsToInvoke="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785./RTDSP/testsine.c">
+<tool id="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785./RTDSP/testsine.c" name="C6000 Compiler" superClass="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785"/>
+</resourceConfiguration>
 </configuration>
 <configuration artifactExtension="out" artifactName="RTDSP" description="" id="com.ti.ccstudio.buildDefinitions.C6000.Release.1245343851" name="Release" parent="com.ti.ccstudio.buildDefinitions.C6000.Release">
 <toolChain id="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.ReleaseToolchain.1099623593" name="TI Code Generation Tools" superClass="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.ReleaseToolchain" targetTool="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.linkerRelease.134379256">
