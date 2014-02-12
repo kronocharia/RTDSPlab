@@ -166,15 +166,10 @@ float sinegen(void)
  	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq)+0.5; 
  	x += jump;										//increment x by jump
   	x = (int)x%SINE_TABLE_SIZE;				  		//wrap round lookup table
-  
-<<<<<<< HEAD
+
  									 				//return (x);
-     return(table[(int)x]); 
-    
-=======
- 															//return (x);
-     return(table[(int)x]);   
->>>>>>> bcfdfb989d1b21afd2b13ce2c77e7db4eb6e930a
+    return(table[(int)x]); 
+
 }
 void sine_init(void){
 	int i;
