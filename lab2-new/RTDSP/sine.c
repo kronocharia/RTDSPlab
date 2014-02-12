@@ -99,7 +99,7 @@ float sine_freq = 1000.0;
 
 float table[SINE_TABLE_SIZE];
 float x = 0;
-     
+int count = 0;     
 /******************************* Function prototypes ********************************/
 void init_hardware(void);     
 float sinegen(void);
@@ -167,9 +167,14 @@ float sinegen(void)
  	x += jump;										//increment x by jump
   	x = (int)x%SINE_TABLE_SIZE;				  		//wrap round lookup table
   
+<<<<<<< HEAD
  									 				//return (x);
      return(table[(int)x]); 
     
+=======
+ 															//return (x);
+     return(table[(int)x]);   
+>>>>>>> bcfdfb989d1b21afd2b13ce2c77e7db4eb6e930a
 }
 void sine_init(void){
 	int i;

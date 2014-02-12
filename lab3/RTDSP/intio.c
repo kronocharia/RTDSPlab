@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 //  Included so program can make use of DSP/BIOS configuration tool.  
+#include <stdio.h>
 #include "dsp_bios_cfg.h"
 
 /* The file dsk6713.h must be included in every program that uses the BSL.  This 
@@ -36,6 +37,17 @@
 
 // Some functions to help with writing/reading the audio ports when using interrupts.
 #include <helper_functions_ISR.h>
+
+//// Some functions to help with configuring hardware
+//#include "helper_functions_polling.h"
+
+
+// PI defined here for use in your code 
+#define PI 3.141592653589793
+
+//sine generation look up table size
+#define SINE_TABLE_SIZE 256
+
 
 /******************************* Global declarations ********************************/
 
@@ -64,20 +76,33 @@ DSK6713_AIC23_CodecHandle H_Codec;
 
  /******************************* Function prototypes ********************************/
 void init_hardware(void);     
-void init_HWI(void);                   
+void init_HWI(void);      		//interrupt settings
+void ISR_AIC(void);        		//interrupt function     
+float sinegen(void);
+void sine_init(void);
+
+//*************************************Global Vars***********************************/
+int sampling_freq = 8000;
+float sine_freq = 1000.0;         
+float table[SINE_TABLE_SIZE];
+float x = 0;
+
+
+
 /********************************** Main routine ************************************/
 void main(){      
 
  
 	// initialize board and the audio port
-  init_hardware();
-	
-  /* initialize hardware interrupts */
-  init_HWI();
+  	init_hardware();
+	sine_init();
+  	/* initialize hardware interrupts */
+  	init_HWI();
   	 		
-  /* loop indefinitely, waiting for interrupts */  					
-  while(1) 
-  {};
+ 	 /* loop indefinitely, waiting for interrupts */  					
+  	while(1) {
+
+  	};
   
 }
         
@@ -110,15 +135,53 @@ void init_hardware()
 /********************************** init_HWI() **************************************/  
 void init_HWI(void)
 {
-	IRQ_globalDisable();			// Globally disables interrupts
-	IRQ_nmiEnable();				// Enables the NMI interrupt (used by the debugger)
-	IRQ_map(IRQ_EVT_RINT1,4);		// Maps an event to a physical interrupt
-	IRQ_enable(IRQ_EVT_RINT1);		// Enables the event
-	IRQ_globalEnable();				// Globally enables interrupts
+	IRQ_globalDisable();			// Globally disables interrupts before changes are made to interrupt configurations
+	IRQ_nmiEnable();				// Enables the Non Maskable Interupts (used by the debugger)
+	IRQ_map(IRQ_EVT_XINT1,4);		// Maps an event to a physical interrupt, here maps RINT1 to priority 4
+	IRQ_enable(IRQ_EVT_XINT1);		// Enables the event symbol IRQ_EVT_RINT1 representing the event generating the interrupt
+	IRQ_globalEnable();				// Globally enables interrupts as we're done config'ing
 
 } 
 
 /******************** WRITE YOUR INTERRUPT SERVICE ROUTINE HERE***********************/  
+void ISR_AIC(void){
 
+	float samp;
+	//samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
+	
+	/* sinegen outputs in range 0-1, from sine.c we have 
+	 * (!DSK6713_AIC23_write(H_Codec, ((Int32)(sample * L_Gain))))
+	 * where gain is Int32 L_Gain = 2100000000;
+	 * divide that by 2^32 -1, then multiply for a 16bit integer gives around 32,000 as a gain
+	 * to give a sensibly sized output
+	 * */
+	 
+	samp = sinegen()*32000;
+	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
+	mono_write_16Bit((Int16)samp);			//write out rectified value. nb samp < 16bits
 
+	
+
+}
+
+/*** singen*///
+
+float sinegen(void)
+{
+
+	// x is global float variable
+	float jump;												//gap to next sample in lookup table
+
+ 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq)+0.5; 	//0.5 deals with integer cast truncation
+ 	x += jump;												//increment x by jump
+  	x = (int)x%SINE_TABLE_SIZE;								//wrap round lookup table
   
+ 															//return (x);
+    return(table[(int)x]);   
+}
+void sine_init(void){
+	int i;
+	for(i=0; i<SINE_TABLE_SIZE; i++){
+		table[i]=sin(i*2*PI/SINE_TABLE_SIZE);
+	} 
+}
