@@ -168,19 +168,17 @@ void ISR_AIC(void){
 
 float sinegen(void)
 {
-	// x is global float variable
-	float jump;											//gap to next sample in lookup table
 
- 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 	//0.5 deals with integer cast truncation
- 	x += jump;											//increment x by jump
-	
-	while(x>255){										//wrap round lookup table
-		x-=SINE_TABLE_SIZE;
-	}
+	// x is global float variable
+	float jump;												//gap to next sample in lookup table
+
+ 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq)+0.5; 	//0.5 deals with integer cast truncation
+ 	x += jump;												//increment x by jump
+  	x = (int)x%SINE_TABLE_SIZE;								//wrap round lookup table
   
+ 															//return (x);
     return(table[(int)x]);   
 }
-
 void sine_init(void){
 	int i;
 	for(i=0; i<SINE_TABLE_SIZE; i++){

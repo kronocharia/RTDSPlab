@@ -163,7 +163,7 @@ float sinegen(void)
 	float jump;										//gap to next sample in lookup table
 	
 	//0.5 deals with integer cast truncation
- 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq)+0.5; 
+ 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 
  	x += jump;										//increment x by jump
 	
 	while(x>255){									//wrap round lookup table
