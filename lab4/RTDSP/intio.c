@@ -48,7 +48,8 @@
 //sine generation look up table size
 #define SINE_TABLE_SIZE 256
 
-
+//number of elements in delay buffer
+#define N 12
 /******************************* Global declarations ********************************/
 
 /* Audio port configuration settings: these values set registers in the AIC23 audio 
@@ -84,9 +85,9 @@ void sine_init(void);
 //*************************************Global Vars***********************************/
 int sampling_freq = 8000;
 float sine_freq = 1000.0;         
-float table[SINE_TABLE_SIZE];
-float x = 0;
-
+double table[SINE_TABLE_SIZE];
+double index = 0;
+double x[N];	//delay buffer
 
 
 /********************************** Main routine ************************************/
@@ -147,7 +148,14 @@ void init_HWI(void)
 void ISR_AIC(void){
 
 	float samp;
-	//samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
+	samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
+	int i;
+	
+	//array shuffling
+	for(i = N-1; i>0; i--){
+		x[i] = x[i-1];		//move data along buffer from lower element to next higher
+	}
+	x[0] = samp;			//put new sample into buffer
 	
 	/* sinegen outputs in range 0-1, from sine.c we have 
 	 * (!DSK6713_AIC23_write(H_Codec, ((Int32)(sample * L_Gain))))
@@ -155,9 +163,10 @@ void ISR_AIC(void){
 	 * divide that by 2^32 -1, then multiply for a 16bit integer gives around 32,000 as a gain
 	 * to give a sensibly sized output
 	 * */
+	
 	 
-	samp = sinegen()*32000;
-	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
+//	samp = sinegen()*32000;
+//	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
 	mono_write_16Bit((Int16)samp);			//write out rectified value. nb samp < 16bits
 
 	
@@ -168,18 +177,18 @@ void ISR_AIC(void){
 
 float sinegen(void)
 {
-
 	// x is global float variable
 	float jump;												//gap to next sample in lookup table
 
  	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 	//0.5 deals with integer cast truncation
- 	x += jump;												//increment x by jump
+ 	index += jump;												//increment x by jump
  	
-	while(x>255){										//wrap round lookup table
-		x-=SINE_TABLE_SIZE;
+	while(index>255){										//wrap round lookup table
+		index-=SINE_TABLE_SIZE;
 	}
-    return(table[(int)round(x)]);   
+    return(table[(int)round(index)]);   
 }
+
 void sine_init(void){
 	int i;
 	for(i=0; i<SINE_TABLE_SIZE; i++){
