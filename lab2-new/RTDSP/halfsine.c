@@ -99,11 +99,11 @@ float sine_freq = 1000.0;
 
 float table[SINE_TABLE_SIZE];
 float x = 0;
-int count = 0;     
+     
 /******************************* Function prototypes ********************************/
 void init_hardware(void);     
 float sinegen(void);
-void sine_init(void);
+void sine_init_half(void);
 /********************************** Main routine ************************************/
 void main()
 {
@@ -161,24 +161,27 @@ float sinegen(void)
 
 	// x is global float variable
 	float jump;										//gap to next sample in lookup table
-	
+	float result;
 	//0.5 deals with integer cast truncation
- 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq)+0.5; 
+ 	jump = (SINE_TABLE_SIZE*2*sine_freq/sampling_freq)+0.5; 
  	x += jump;										//increment x by jump
-	
-	while(x>255){									//wrap round lookup table
-		x-=SINE_TABLE_SIZE;
-	}
-  	//x = (int)x%SINE_TABLE_SIZE;				  		//wrap round lookup table
+  	x = (int)x%(SINE_TABLE_SIZE*2);				  		//wrap round lookup table
+  
+ 	if (x>255)
+ 	{
+ 		result = -1*table[(int)x];
+ 	}
+ 	else 
+ 		result = table[(int)x];
 
  									 				//return (x);
-    return(table[(int)x]); 
-
+    return result; 
+    
 }
-void sine_init(void){
+void sine_init_half(void){
 	int i;
 	for(i=0; i<SINE_TABLE_SIZE; i++){
-		table[i]=sin(i*2*PI/SINE_TABLE_SIZE);
+		table[i]=sin(i*PI/SINE_TABLE_SIZE);
 	}
 }
 
