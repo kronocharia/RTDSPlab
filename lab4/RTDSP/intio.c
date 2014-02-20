@@ -82,7 +82,7 @@ void init_HWI(void);      		//interrupt settings
 void ISR_AIC(void);        		//interrupt function     
 float sinegen(void);
 void sine_init(void);
-
+double non_cir_FIR(double);
 //*************************************Global Vars***********************************/
 int sampling_freq = 8000;
 float sine_freq = 1000.0;         
@@ -93,22 +93,13 @@ double y[N];	//output
 FILE *fptr;
 double filterCoeffs[N];
 /********************************** Main routine ************************************/
-void main(){      
-	int i=0;
+void main(){
  
 	// initialize board and the audio port
   	init_hardware();
 	sine_init();
   	/* initialize hardware interrupts */
   	init_HWI();
-  	
-
-//  	fptr = fopen("fir_coef.txt", "r");
-//  	while(!feof(fptr)){
-//  		fscanf(fptr, "%f", filterCoeffs[i]);
-//  		i++;
-//  	} 
-//  	fclose(fptr);
   	
  	 /* loop indefinitely, waiting for interrupts */  					
   	while(1) {
@@ -157,37 +148,37 @@ void init_HWI(void)
 /******************** WRITE YOUR INTERRUPT SERVICE ROUTINE HERE***********************/  
 void ISR_AIC(void){
 
-	float samp;
-	int i;
-	int j;
-	double sum = 0;
+	double samp;
+	double out;
 	samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
-
+	out = non_cir_FIR(samp);
 	
+/* sinegen outputs in range 0-1, from sine.c we have 
+	 * (!DSK6713_AIC23_write(H_Codec, ((Int32)(sample * L_Gain))))
+	 * where gain is Int32 L_Gain = 2100000000;
+	 * divide that by 2^32 -1, then multiply for a 16bit integer gives around 32,000 as a gain
+	 * to give a sensibly sized output
+	 * */			
+//	samp = sinegen()*32000;
+//	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
+	mono_write_16Bit((Int16)out);			//write out rectified value. nb samp < 16bits
+}
+
+double non_cir_FIR(double samp){
+	double sum = 0;
+	int i;
 	//array shuffling
 	for(i = N-1; i>0; i--){
 		x[i] = x[i-1];		//move data along buffer from lower element to next higher
 	}
 	x[0] = samp;			//put new sample into buffer
-	
-	/* sinegen outputs in range 0-1, from sine.c we have 
-	 * (!DSK6713_AIC23_write(H_Codec, ((Int32)(sample * L_Gain))))
-	 * where gain is Int32 L_Gain = 2100000000;
-	 * divide that by 2^32 -1, then multiply for a 16bit integer gives around 32,000 as a gain
-	 * to give a sensibly sized output
-	 * */	
 
 	//convolution
-	for(j=0; j<N; j++){
-		sum += x[j]*b[j];			//where b is the array of filter coefficients 
+	for(i=0; i<N; i++){
+		sum += x[i]*b[i];			//where b is the array of filter coefficients 
 	}
- 
-//	samp = sinegen()*32000;
-//	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
-	mono_write_16Bit((Int16)sum);			//write out rectified value. nb samp < 16bits
+	return sum;
 }
-
-/*** singen*///
 
 float sinegen(void)
 {

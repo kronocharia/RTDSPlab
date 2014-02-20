@@ -34,6 +34,7 @@
 <listOptionValue builtIn="false" value="_DEBUG"/>
 <listOptionValue builtIn="false" value="CHIP_6713"/>
 </option>
+<option id="com.ti.ccstudio.buildDefinitions.C6000_6.1.compilerID.OPT_LEVEL.957502516" superClass="com.ti.ccstudio.buildDefinitions.C6000_6.1.compilerID.OPT_LEVEL" value="com.ti.ccstudio.buildDefinitions.C6000_6.1.compilerID.OPT_LEVEL.2" valueType="enumerated"/>
 </tool>
 <tool id="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.linkerDebug.444881945" name="C6000 Linker" superClass="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.linkerDebug">
 <option id="com.ti.ccstudio.buildDefinitions.C6000_6.1.linkerID.OUTPUT_FILE.1045334853" superClass="com.ti.ccstudio.buildDefinitions.C6000_6.1.linkerID.OUTPUT_FILE" value="&quot;RTDSP.out&quot;" valueType="string"/>
