@@ -16,11 +16,11 @@ plot(f/2 * Fs,a,w/2/pi * Fs,abs(h)) %draws the something....
 figure;                             %create new figure window
 freqz(b,1,512, Fs);                 %plot magnitude and phase of filter design
 
-tmp = (b(1));
-str = ['double b[] = {' num2str(tmp)];
-for i=2:length(b)
-    tmp = (b(i));
-    str = [str, ', ', num2str(tmp)];
+text = ['double b[] = {']
+for i=1:length(b)
+    num2str(b(i))
+    text = [text ', '];
+    
 end;
-str = [str, '}'];
-save fir_coeff.txt str -ascii -double   %save coefficient b to txt file
+text = [text '}'];
+save fir_coef.txt text -ASCII -DOUBLE -TABS  %save coefficient b to txt file

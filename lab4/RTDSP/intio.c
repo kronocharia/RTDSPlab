@@ -41,6 +41,7 @@
 //// Some functions to help with configuring hardware
 //#include "helper_functions_polling.h"
 
+#include "fir_coeff.txt"
 
 // PI defined here for use in your code 
 #define PI 3.141592653589793
@@ -49,7 +50,7 @@
 #define SINE_TABLE_SIZE 256
 
 //number of elements in delay buffer
-#define N 12
+#define N 95	//number of taps
 /******************************* Global declarations ********************************/
 
 /* Audio port configuration settings: these values set registers in the AIC23 audio 
@@ -88,18 +89,27 @@ float sine_freq = 1000.0;
 double table[SINE_TABLE_SIZE];
 double index = 0;
 double x[N];	//delay buffer
-
-
+double y[N];	//output
+FILE *fptr;
+double filterCoeffs[N];
 /********************************** Main routine ************************************/
 void main(){      
-
+	int i=0;
  
 	// initialize board and the audio port
   	init_hardware();
 	sine_init();
   	/* initialize hardware interrupts */
   	init_HWI();
-  	 		
+  	
+
+//  	fptr = fopen("fir_coef.txt", "r");
+//  	while(!feof(fptr)){
+//  		fscanf(fptr, "%f", filterCoeffs[i]);
+//  		i++;
+//  	} 
+//  	fclose(fptr);
+  	
  	 /* loop indefinitely, waiting for interrupts */  					
   	while(1) {
 
@@ -148,8 +158,11 @@ void init_HWI(void)
 void ISR_AIC(void){
 
 	float samp;
-	samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
 	int i;
+	int j;
+	double sum = 0;
+	samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
+
 	
 	//array shuffling
 	for(i = N-1; i>0; i--){
@@ -162,15 +175,16 @@ void ISR_AIC(void){
 	 * where gain is Int32 L_Gain = 2100000000;
 	 * divide that by 2^32 -1, then multiply for a 16bit integer gives around 32,000 as a gain
 	 * to give a sensibly sized output
-	 * */
-	
-	 
+	 * */	
+
+	//convolution
+	for(j=0; j<N; j++){
+		sum += x[j]*b[j];			//where b is the array of filter coefficients 
+	}
+ 
 //	samp = sinegen()*32000;
 //	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
-	mono_write_16Bit((Int16)samp);			//write out rectified value. nb samp < 16bits
-
-	
-
+	mono_write_16Bit((Int16)sum);			//write out rectified value. nb samp < 16bits
 }
 
 /*** singen*///
