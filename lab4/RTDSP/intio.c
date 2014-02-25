@@ -41,7 +41,7 @@
 //// Some functions to help with configuring hardware
 //#include "helper_functions_polling.h"
 
-#include "fir_coeff.txt"
+#include "fir_coeff.txt"	//contains filter coefficients b[]
 
 // PI defined here for use in your code 
 #define PI 3.141592653589793
@@ -51,6 +51,8 @@
 
 //number of elements in delay buffer
 #define N 95	//number of taps
+
+#define USECIRCULARBUFFER
 /******************************* Global declarations ********************************/
 
 /* Audio port configuration settings: these values set registers in the AIC23 audio 
@@ -83,15 +85,16 @@ void ISR_AIC(void);        		//interrupt function
 float sinegen(void);
 void sine_init(void);
 double non_cir_FIR(double);
+double cir_FIR(double);
 //*************************************Global Vars***********************************/
 int sampling_freq = 8000;
 float sine_freq = 1000.0;         
 double table[SINE_TABLE_SIZE];
 double index = 0;
-double x[N];	//delay buffer
-double y[N];	//output
-FILE *fptr;
-double filterCoeffs[N];
+//int N = sizeof(b);	//number of taps
+double x[N]={0};			//non circular delay buffer
+double cirBuffer[N] = {0};	//circular buffer
+int writePtr = N - 1;	//write pointer for circular buffer
 /********************************** Main routine ************************************/
 void main(){
  
@@ -150,21 +153,18 @@ void ISR_AIC(void){
 
 	double samp;
 	double out;
-	samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
-	out = non_cir_FIR(samp);
+	samp = mono_read_16Bit();			//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
 	
-/* sinegen outputs in range 0-1, from sine.c we have 
-	 * (!DSK6713_AIC23_write(H_Codec, ((Int32)(sample * L_Gain))))
-	 * where gain is Int32 L_Gain = 2100000000;
-	 * divide that by 2^32 -1, then multiply for a 16bit integer gives around 32,000 as a gain
-	 * to give a sensibly sized output
-	 * */			
-//	samp = sinegen()*32000;
-//	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
-	mono_write_16Bit((Int16)out);			//write out rectified value. nb samp < 16bits
+	//#ifdef USECIRCULARBUFFER
+		out = cir_FIR(samp);			//FIR filter function with circular buffer
+	//#else
+		//out = non_cir_FIR(samp);		//FIR filter function with non-circular buffer
+	//#endif
+
+	mono_write_16Bit((Int16)out);		//write out rectified value. nb samp < 16bits
 }
 
-double non_cir_FIR(double samp){
+double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
 	double sum = 0;
 	int i;
 	//array shuffling
@@ -176,6 +176,33 @@ double non_cir_FIR(double samp){
 	//convolution
 	for(i=0; i<N; i++){
 		sum += x[i]*b[i];			//where b is the array of filter coefficients 
+	}
+	return sum;
+}
+
+double cir_FIR(double samp){	//FIR filter funcion with circular buffer
+	
+	double sum = 0;
+	int i;
+	int readPtr = writePtr;
+	
+	cirBuffer[writePtr] = samp;	//put new sample into cir buffer
+
+	if(writePtr == 0)
+		writePtr = N - 1;
+	else
+		writePtr--;
+	
+	//convolution
+	for(i=0; i<N; i++){ 
+		sum += cirBuffer[readPtr]*b[i];
+		if(readPtr < N-1)		//implementation 1
+			readPtr++;
+		else
+			readPtr = 0;
+		
+		/*readPtr++;				//implementation 2
+		readPtr = readPtr%N;*/				
 	}
 	return sum;
 }
