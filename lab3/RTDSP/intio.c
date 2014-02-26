@@ -82,10 +82,10 @@ float sinegen(void);
 void sine_init(void);
 
 //*************************************Global Vars***********************************/
-int sampling_freq = 8000;
-float sine_freq = 1000.0;         
-float table[SINE_TABLE_SIZE];
-float x = 0;
+int sampling_freq = 8000;       //user defined sampling freq
+float sine_freq = 1000.0;       //user defined code generated sine frequency  
+float table[SINE_TABLE_SIZE];   //table storing sinewave samples
+float x = 0;                    //x is used to index/access the sine table array
 
 
 
@@ -146,8 +146,8 @@ void init_HWI(void)
 /******************** WRITE YOUR INTERRUPT SERVICE ROUTINE HERE***********************/  
 void ISR_AIC(void){
 
-	float samp;
-	//samp = mono_read_16Bit();				//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
+	float samp;                         
+	//samp = mono_read_16Bit();			//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
 	
 	/* sinegen outputs in range 0-1, from sine.c we have 
 	 * (!DSK6713_AIC23_write(H_Codec, ((Int32)(sample * L_Gain))))
@@ -158,24 +158,22 @@ void ISR_AIC(void){
 	 
 	samp = sinegen()*32000;
 	samp = abs(samp);					//fullwave rectify function, take absolute value of the signal amplitude
-	mono_write_16Bit((Int16)samp);			//write out rectified value. nb samp < 16bits
+	mono_write_16Bit((Int16)samp);		//write out rectified value. force samp into 16bits
 
-	
 
 }
 
-/*** singen*///
+/*************** singen function *********///
 
-float sinegen(void)
-{
+float sinegen(void){
 
 	// x is global float variable
 	float jump;												//gap to next sample in lookup table
 
- 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 	//0.5 deals with integer cast truncation
+ 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 	
  	x += jump;												//increment x by jump
  	
-	while(x>255){										//wrap round lookup table
+	while(x>255){										    //wrap round lookup table
 		x-=SINE_TABLE_SIZE;
 	}
     return(table[(int)round(x)]);   
@@ -183,6 +181,7 @@ float sinegen(void)
 void sine_init(void){
 	int i;
 	for(i=0; i<SINE_TABLE_SIZE; i++){
-		table[i]=sin(i*2*PI/SINE_TABLE_SIZE);
+		table[i]=sin(i*2*PI/SINE_TABLE_SIZE);               //prepopulate array with sin values such that
+                                                            //entire wave is stored in 256 samples
 	} 
 }
