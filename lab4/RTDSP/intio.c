@@ -92,9 +92,9 @@ float sine_freq = 1000.0;
 double table[SINE_TABLE_SIZE];
 double index = 0;
 //int N = sizeof(b);	//number of taps
-double x[N]={0};			//non circular delay buffer
-double cirBuffer[N] = {0};	//circular buffer
-int writePtr = N - 1;	//write pointer for circular buffer
+double x[N]={0};			 //non circular delay buffer
+double cirBuffer[N] = {0};	 //circular buffer
+int writePtr = N - 1;	     //write pointer for circular buffer
 /********************************** Main routine ************************************/
 void main(){
  
@@ -155,13 +155,13 @@ void ISR_AIC(void){
 	double out;
 	samp = mono_read_16Bit();			//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
 	
-	//#ifdef USECIRCULARBUFFER
+	#ifdef USECIRCULARBUFFER
 		out = cir_FIR(samp);			//FIR filter function with circular buffer
-	//#else
-		//out = non_cir_FIR(samp);		//FIR filter function with non-circular buffer
-	//#endif
+	#else
+		out = non_cir_FIR(samp);		//FIR filter function with non-circular buffer
+	#endif
 
-	mono_write_16Bit((Int16)out);		//write out rectified value. nb samp < 16bits
+	mono_write_16Bit((Int16)out);		//write out rectified value. 
 }
 
 double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
@@ -169,14 +169,14 @@ double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
 	int i;
 	//array shuffling
 	for(i = N-1; i>0; i--){
-		x[i] = x[i-1];		//move data along buffer from lower element to next higher
+		x[i] = x[i-1];		//move data along buffer shifting up one index along array
 	}
-	x[0] = samp;			//put new sample into buffer
+	x[0] = samp;			//put new sample into buffer, first array element
 
 	//convolution
 	for(i=0; i<N; i++){
 		sum += x[i]*b[i];			//where b is the array of filter coefficients 
-	}
+	}                               //and x is already flipped   
 	return sum;
 }
 
@@ -184,24 +184,25 @@ double cir_FIR(double samp){	//FIR filter funcion with circular buffer
 	
 	double sum = 0;
 	int i;
-	int readPtr = writePtr;
+	int readPtr = writePtr;       //start reading from where we wrote last
 	
-	cirBuffer[writePtr] = samp;	//put new sample into cir buffer
+	cirBuffer[writePtr] = samp;	  //put new sample into cir buffer
+                                  //writePtr initialised to last element in the array  
 
-	if(writePtr == 0)
-		writePtr = N - 1;
+	if(writePtr == 0)             //wraps the writePtr around the array achieving
+		writePtr = N - 1;         //circular nature
 	else
-		writePtr--;
+		writePtr--;               //otherwise decrements the pointer through the array
 	
 	//convolution
 	for(i=0; i<N; i++){ 
 		sum += cirBuffer[readPtr]*b[i];
-		if(readPtr < N-1)		//implementation 1
+		if(readPtr < N-1)		//buffer implementation 1
 			readPtr++;
 		else
 			readPtr = 0;
 		
-		/*readPtr++;				//implementation 2
+		/*readPtr++;				//buffer implementation 2
 		readPtr = readPtr%N;*/				
 	}
 	return sum;
@@ -210,18 +211,18 @@ double cir_FIR(double samp){	//FIR filter funcion with circular buffer
 float sinegen(void)
 {
 	// x is global float variable
-	float jump;												//gap to next sample in lookup table
+	float jump;												    //gap to next sample in lookup table
 
- 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 	//0.5 deals with integer cast truncation
+ 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 	
  	index += jump;												//increment x by jump
  	
-	while(index>255){										//wrap round lookup table
+	while(index>255){										    //wrap round lookup table
 		index-=SINE_TABLE_SIZE;
 	}
     return(table[(int)round(index)]);   
 }
 
-void sine_init(void){
+void sine_init(void){                                   //populates sine table
 	int i;
 	for(i=0; i<SINE_TABLE_SIZE; i++){
 		table[i]=sin(i*2*PI/SINE_TABLE_SIZE);
