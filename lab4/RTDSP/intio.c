@@ -41,8 +41,8 @@
 //// Some functions to help with configuring hardware
 //#include "helper_functions_polling.h"
 
-//#include "fir_coeff.txt"	//contains filter coefficients b[]
-#include "fir_81.txt" 
+#include "fir_coeff.txt"	//contains filter coefficients b[]
+//#include "fir_81.txt" 
 // PI defined here for use in your code 
 #define PI 3.141592653589793
 
@@ -50,9 +50,9 @@
 #define SINE_TABLE_SIZE 256
 
 //number of elements in delay buffer
-#define N 81	//number of taps
+#define N 101	//number of taps
 
-#define USECIRCULARBUFFER
+#define USECIRCULARBUFFER 
 /******************************* Global declarations ********************************/
 
 /* Audio port configuration settings: these values set registers in the AIC23 audio 
@@ -154,7 +154,7 @@ void ISR_AIC(void){
 	double samp;
 	double out;
 	samp = mono_read_16Bit();			//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
-	
+
 	#ifdef USECIRCULARBUFFER
 		out = cir_FIR(samp);			//FIR filter function with circular buffer
 	#else
@@ -162,7 +162,13 @@ void ISR_AIC(void){
 	#endif
 
 	mono_write_16Bit((Int16)out);		//write out rectified value. 
+	
+	
+	//mono_write_16Bit(samp);				//allpass to analyse board response
+	
 }
+
+
 
 double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
 	double sum = 0;
