@@ -1,4 +1,4 @@
-F = [240 440 2000 2300];  %tap frequencies
+F = [245 440 2000 2200];  %tap frequencies
 A = [0 1 0];                    %tap gain, assume its working on
                                     %pairs of entries, with an implicit 0
                                     %at the start and end
