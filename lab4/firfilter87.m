@@ -1,10 +1,10 @@
-F = [240 440 2000 2200];  %tap frequencies
+F = [238 440 2000 2200];  %tap frequencies
 A = [0 1 0];                    %tap gain, assume its working on
                                     %pairs of entries, with an implicit 0
                                     %at the start and end
-pass_ripple = (10^(0.4/20)-1)/(10^(0.4/20)+1); 
+pass_ripple = (10^(0.35/20)-1)/(10^(0.35/20)+1); 
 stop_ripple = 10^(-50/20);
-stop_ripple_front = 10^(-67/20);
+stop_ripple_front = 10^(-55/20);
 DEV = [stop_ripple_front pass_ripple stop_ripple];
 Fs = 8000;                          %Fsamp
 

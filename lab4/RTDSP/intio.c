@@ -41,8 +41,10 @@
 //// Some functions to help with configuring hardware
 //#include "helper_functions_polling.h"
 
-#include "fir_coeff.txt"	//contains filter coefficients b[]
+//#include "fir_coeff.txt"	//contains filter coefficients b[]
+#include "fir_87.txt"
 //#include "fir_81.txt" 
+//#include "fir95_coeff.txt"
 // PI defined here for use in your code 
 #define PI 3.141592653589793
 
@@ -50,7 +52,7 @@
 #define SINE_TABLE_SIZE 256
 
 //number of elements in delay buffer
-#define N 101	//number of taps
+#define N 87	//number of taps
 
 #define USECIRCULARBUFFER 
 /******************************* Global declarations ********************************/
