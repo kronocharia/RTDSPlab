@@ -41,10 +41,9 @@
 //// Some functions to help with configuring hardware
 //#include "helper_functions_polling.h"
 
-//#include "fir_coeff.txt"	//contains filter coefficients b[]
-#include "fir_87.txt"
-//#include "fir_81.txt" 
-//#include "fir95_coeff.txt"
+//#include "fir_coeff.txt"
+#include "fir_87.txt" //contains filter coefficients b[]
+
 // PI defined here for use in your code 
 #define PI 3.141592653589793
 
@@ -219,12 +218,12 @@ double cir_FIR(double samp){	//FIR filter funcion with circular buffer
 float sinegen(void)
 {
 	// x is global float variable
-	float jump;												    //gap to next sample in lookup table
+	float jump;												 //gap to next sample in lookup table
 
  	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 	
- 	index += jump;												//increment x by jump
+ 	index += jump;											//increment x by jump
  	
-	while(index>255){										    //wrap round lookup table
+	while(index>255){										//wrap round lookup table
 		index-=SINE_TABLE_SIZE;
 	}
     return(table[(int)round(index)]);   
