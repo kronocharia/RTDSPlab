@@ -22,5 +22,9 @@ for i=2:length(b)
     tmp = (b(i));
     str = [str, ', ', num2str(tmp)];
 end;
-str = [str, '}'];
-save fir_coeff.txt str -ascii -double   %save coefficient b to txt file
+str = [str, '};'];
+str2 = ['const int = ', num2str(length(b)),';'];
+fileID = fopen('jerry.txt' , 'w+');
+fprintf(fileID, '%s\n%s\n', str, str2);
+fclose(fileID);
+%save fir_coeff.txt str -ascii -double   %save coefficient b to txt file
