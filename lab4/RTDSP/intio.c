@@ -53,7 +53,7 @@
 //number of elements in delay buffer
 #define N 87	//number of taps
 
-#define USECIRCULARBUFFER 
+//#define USECIRCULARBUFFER 
 /******************************* Global declarations ********************************/
 
 /* Audio port configuration settings: these values set registers in the AIC23 audio 
@@ -174,6 +174,16 @@ void ISR_AIC(void){
 double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
 	double sum = 0;
 	int i;
+	
+	//array shuffling with convolution
+	for(i = N-1; i>0; i--){
+		x[i] = x[i-1];		//move data along buffer shifting up one index along array
+		sum += x[i]*b[i];			//where b is the array of filter coefficients 
+	}
+	x[0] = samp;			//put new sample into buffer, first array element
+	sum += x[0]*b[0];			//where b is the array of filter coefficients 
+
+	/*
 	//array shuffling
 	for(i = N-1; i>0; i--){
 		x[i] = x[i-1];		//move data along buffer shifting up one index along array
@@ -184,6 +194,8 @@ double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
 	for(i=0; i<N; i++){
 		sum += x[i]*b[i];			//where b is the array of filter coefficients 
 	}                               //and x is already flipped   
+	
+	*/
 	return sum;
 }
 
