@@ -53,6 +53,8 @@
 #define N 95	//number of taps
 
 #define USECIRCULARBUFFER
+
+#define FILTER_CONST 16 //2RC/T_s
 /******************************* Global declarations ********************************/
 
 /* Audio port configuration settings: these values set registers in the AIC23 audio 
@@ -86,18 +88,25 @@ float sinegen(void);
 void sine_init(void);
 double non_cir_FIR(double);
 double cir_FIR(double);
+double lowpassRCFilter(double samp);
 //*************************************Global Vars***********************************/
-int sampling_freq = 8000;
-float sine_freq = 1000.0;         
+const int sampling_freq = 8000;
+const float sine_freq = 1000.0;         
 double table[SINE_TABLE_SIZE];
 double index = 0;
 //int N = sizeof(b);	//number of taps
 double x[N]={0};			 //non circular delay buffer
 double cirBuffer[N] = {0};	 //circular buffer
 int writePtr = N - 1;	     //write pointer for circular buffer
+ 
+double previousSample = 0;
+double previousOutput = 0;		//for single pole filter lab5
+const float RC= 0.001;		//constant for single pole filter
+//const double filterConstant =2*RC*sampling_freq;
 /********************************** Main routine ************************************/
 void main(){
- 
+
+ 	
 	// initialize board and the audio port
   	init_hardware();
 	sine_init();
@@ -155,13 +164,51 @@ void ISR_AIC(void){
 	double out;
 	samp = mono_read_16Bit();			//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
 	
+	out = lowpassRCFilter(samp);	
+	
+/*
 	#ifdef USECIRCULARBUFFER
-		out = cir_FIR(samp);			//FIR filter function with circular buffer
+		//out = cir_FIR(samp);			//FIR filter function with circular buffer
 	#else
 		out = non_cir_FIR(samp);		//FIR filter function with non-circular buffer
-	#endif
-
+	#endif*/
 	mono_write_16Bit((Int16)out);		//write out rectified value. 
+}
+
+
+double lowpassRCFilter(double samp){
+	
+	double output =0;
+	
+	//Time domain implementation of filter of first order lowpass RC filter
+	output =  samp /17 + previousSample/17 - ((-15.0/17.0)*previousOutput);
+	
+	//storing previous values to feedback into filter
+	previousSample = samp;
+	previousOutput = output;
+	return output;
+}
+
+double iirBandPassDirect(double samp){
+
+	double sum = 0;
+	int i;
+	int readPtr = writePtr;
+
+	circBuffer[writePtr] = samp;
+
+	if (writePtr == 0)
+		writePtr = N-1;
+	else 
+		writePtr--;
+
+	for (i = 0; i < N; i++){
+		//filter maths
+        sum +=  b[i]*circBuffer[readPtr]-a[i]* circBuffer[readPtr];
+		if (++readPtr == N)
+			readPtr = 0;
+	}
+	return sum;
 }
 
 double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
@@ -181,7 +228,7 @@ double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
 }
 
 double cir_FIR(double samp){	//FIR filter funcion with circular buffer
-	
+	/*
 	double sum = 0;
 	int i;
 	int readPtr = writePtr;       //start reading from where we wrote last
@@ -204,8 +251,23 @@ double cir_FIR(double samp){	//FIR filter funcion with circular buffer
 		
 		/*readPtr++;				//buffer implementation 2
 		readPtr = readPtr%N;*/				
-	}
-	return sum;
+	//}
+	//return sum;
+	
+	double output =0;
+	
+	//Time domain implementation of filter of first order lowpass RC filter
+	output = (samp + previousSample)/(1.0 + FILTER_CONST) ;
+	output -= (1 - FILTER_CONST) * previousOutput;	
+	
+	//storing previous values to feedback into filter
+	previousSample = samp;
+	previousOutput = output;
+	return output;
+	
+	
+	
+	
 }
 
 float sinegen(void)
