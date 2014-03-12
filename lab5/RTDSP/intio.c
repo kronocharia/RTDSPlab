@@ -41,7 +41,7 @@
 //// Some functions to help with configuring hardware
 //#include "helper_functions_polling.h"
 
-#include "fir_coeff.txt"	//contains filter coefficients b[]
+#include "coeff.txt"	//contains filter coefficients b[]
 
 // PI defined here for use in your code 
 #define PI 3.141592653589793
@@ -50,9 +50,6 @@
 #define SINE_TABLE_SIZE 256
 
 //number of elements in delay buffer
-#define N 95	//number of taps
-
-#define USECIRCULARBUFFER
 
 #define FILTER_CONST 16 //2RC/T_s
 /******************************* Global declarations ********************************/
@@ -84,19 +81,13 @@ DSK6713_AIC23_CodecHandle H_Codec;
 void init_hardware(void);     
 void init_HWI(void);      		//interrupt settings
 void ISR_AIC(void);        		//interrupt function     
-float sinegen(void);
-void sine_init(void);
-double non_cir_FIR(double);
-double cir_FIR(double);
-double lowpassRCFilter(double samp);
+
+double lowpassRCFilter(double);
+double iirBPDirectForm2(double);
 //*************************************Global Vars***********************************/
 const int sampling_freq = 8000;
-const float sine_freq = 1000.0;         
-double table[SINE_TABLE_SIZE];
-double index = 0;
-//int N = sizeof(b);	//number of taps
-double x[N]={0};			 //non circular delay buffer
-double cirBuffer[N] = {0};	 //circular buffer
+//double circBuffer[N] = {0,0,0,0,0};	 //circular buffer
+double circBuffer[N] = {0};
 int writePtr = N - 1;	     //write pointer for circular buffer
  
 double previousSample = 0;
@@ -105,11 +96,10 @@ const float RC= 0.001;		//constant for single pole filter
 //const double filterConstant =2*RC*sampling_freq;
 /********************************** Main routine ************************************/
 void main(){
-
- 	
+	
 	// initialize board and the audio port
   	init_hardware();
-	sine_init();
+
   	/* initialize hardware interrupts */
   	init_HWI();
   	
@@ -165,13 +155,8 @@ void ISR_AIC(void){
 	samp = mono_read_16Bit();			//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
 	
 	out = lowpassRCFilter(samp);	
-	
-/*
-	#ifdef USECIRCULARBUFFER
-		//out = cir_FIR(samp);			//FIR filter function with circular buffer
-	#else
-		out = non_cir_FIR(samp);		//FIR filter function with non-circular buffer
-	#endif*/
+//	out = iirBPDirectForm2(samp);
+
 	mono_write_16Bit((Int16)out);		//write out rectified value. 
 }
 
@@ -181,112 +166,54 @@ double lowpassRCFilter(double samp){
 	double output =0;
 	
 	//Time domain implementation of filter of first order lowpass RC filter
-	output =  samp /17 + previousSample/17 - ((-15.0/17.0)*previousOutput);
+	output =  samp /17.0 + previousSample/17.0 - ((-15.0/17.0)*previousOutput);
 	
-	//storing previous values to feedback into filter
+	//storing previous values (global vars) to feedback into filter
 	previousSample = samp;
 	previousOutput = output;
 	return output;
 }
 
-double iirBandPassDirect(double samp){
+double iirBPDirectForm2(double samp){
 
 	double sum = 0;
 	int i;
-	int readPtr = writePtr;
+/*	int readPtr = (writePtr+1)%N;
 
-	circBuffer[writePtr] = samp;
+	circBuffer[writePtr] = samp;	//
 
-	if (writePtr == 0)
+	for (i=1; i<N; i++){
+		circBuffer[writePtr] -= a[i]*circBuffer[readPtr];
+		if(++readPtr == N)
+			readPtr = 0;
+	}
+	
+	if (--writePtr == -1)
 		writePtr = N-1;
-	else 
-		writePtr--;
-
+	
 	for (i = 0; i < N; i++){
 		//filter maths
-        sum +=  b[i]*circBuffer[readPtr]-a[i]* circBuffer[readPtr];
+        sum +=  b[i]*circBuffer[readPtr];
 		if (++readPtr == N)
 			readPtr = 0;
-	}
-	return sum;
-}
-
-double non_cir_FIR(double samp){	//FIR filter function with non-circular buffer
-	double sum = 0;
-	int i;
-	//array shuffling
-	for(i = N-1; i>0; i--){
-		x[i] = x[i-1];		//move data along buffer shifting up one index along array
-	}
-	x[0] = samp;			//put new sample into buffer, first array element
-
-	//convolution
-	for(i=0; i<N; i++){
-		sum += x[i]*b[i];			//where b is the array of filter coefficients 
-	}                               //and x is already flipped   
-	return sum;
-}
-
-double cir_FIR(double samp){	//FIR filter funcion with circular buffer
-	/*
-	double sum = 0;
-	int i;
-	int readPtr = writePtr;       //start reading from where we wrote last
+	}*/
 	
-	cirBuffer[writePtr] = samp;	  //put new sample into cir buffer
-                                  //writePtr initialised to last element in the array  
-
-	if(writePtr == 0)             //wraps the writePtr around the array achieving
-		writePtr = N - 1;         //circular nature
-	else
-		writePtr--;               //otherwise decrements the pointer through the array
+	int readPtr = writePtr;
+	circBuffer[writePtr]=0;		//prevents oldest value from being used in loop calculation
 	
-	//convolution
-	for(i=0; i<N; i++){ 
-		sum += cirBuffer[readPtr]*b[i];
-		if(readPtr < N-1)		//buffer implementation 1
-			readPtr++;
-		else
+	for(i=1; i<N; i++){
+		if (++readPtr == N)		//increment readPtr and wraps around
 			readPtr = 0;
-		
-		/*readPtr++;				//buffer implementation 2
-		readPtr = readPtr%N;*/				
-	//}
-	//return sum;
-	
-	double output =0;
-	
-	//Time domain implementation of filter of first order lowpass RC filter
-	output = (samp + previousSample)/(1.0 + FILTER_CONST) ;
-	output -= (1 - FILTER_CONST) * previousOutput;	
-	
-	//storing previous values to feedback into filter
-	previousSample = samp;
-	previousOutput = output;
-	return output;
-	
-	
-	
-	
-}
-
-float sinegen(void)
-{
-	// x is global float variable
-	float jump;												    //gap to next sample in lookup table
-
- 	jump = (SINE_TABLE_SIZE*sine_freq/sampling_freq); 	
- 	index += jump;												//increment x by jump
- 	
-	while(index>255){										    //wrap round lookup table
-		index-=SINE_TABLE_SIZE;
+		circBuffer[writePtr] -= a[i]*circBuffer[readPtr];   //a coeff MAC
+		sum+= b[i]*circBuffer[readPtr];						//b coeff MAC
 	}
-    return(table[(int)round(index)]);   
+	circBuffer[writePtr] += samp;							//add input to sum
+	sum+= b[0]*circBuffer[writePtr];						//do b0 multiplication and add to sum
+	
+	if (--writePtr == -1)	//decrement and wraps writePtr
+		writePtr = N-1;
+	return sum;
 }
 
-void sine_init(void){                                   //populates sine table
-	int i;
-	for(i=0; i<SINE_TABLE_SIZE; i++){
-		table[i]=sin(i*2*PI/SINE_TABLE_SIZE);
-	} 
-}
+
+

@@ -23,7 +23,7 @@ fs = 8000                   %sampling frequency
 %pass_ripple = (10^(0.5/20)-1)/(10^(0.5/20)+1); 
 %stop_gain = 10^(-25/20);
 
-pass_ripple = 0.5;      %in dB
+pass_ripple = 0.4;      %in dB
 stop_attenuation = 25;
 edge_freq = [2*280/fs 2*470/fs]  %filter normalised edge frequencies
 
@@ -32,7 +32,8 @@ edge_freq = [2*280/fs 2*470/fs]  %filter normalised edge frequencies
 %----order n 'ftype' digital elliptic filter with normalized passband edge frequency Wp, 
 %----Rp dB of ripple in the passband, and a stopband Rs dB down from the peak value in the passband.
 %---- returns b,a
-
+Hd=dfilt.df2(b,a);
+fvtool(Hd)
 %plot stuff
 figure;                             %create new figure window
 freqz(b,a,512, fs);                 %plot magnitude and phase of filter design
@@ -45,7 +46,7 @@ for i=2:length(b)
     str_b = [str_b, ', ', num2str(tmp)];
 end;
 str_b = [str_b, '};'];
-str_len_b = ['const int N = ', num2str(length(b)),';'];     %length of b
+str_len_b = ['#define N ', num2str(length(b))];     %length of b
 
 tmp = (a(1));
 str_a = ['double a[] = {' num2str(tmp)];
