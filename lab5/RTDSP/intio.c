@@ -32,24 +32,16 @@
 #include "dsk6713.h"
 #include "dsk6713_aic23.h"
 
-// math library (trig functions)
 #include <math.h>
 
 // Some functions to help with writing/reading the audio ports when using interrupts.
 #include <helper_functions_ISR.h>
-
-//// Some functions to help with configuring hardware
-//#include "helper_functions_polling.h"
 
 #include "coeff.txt"	//contains filter coefficients b[]
 
 // PI defined here for use in your code 
 #define PI 3.141592653589793
 
-//sine generation look up table size
-#define SINE_TABLE_SIZE 256
-
-//number of elements in delay buffer
 
 #define FILTER_CONST 16 //2RC/T_s
 /******************************* Global declarations ********************************/
@@ -84,11 +76,13 @@ void ISR_AIC(void);        		//interrupt function
 
 double lowpassRCFilter(double);
 double iirBPDirectForm2(double);
+double iirBPTransposed(double);
 //*************************************Global Vars***********************************/
 const int sampling_freq = 8000;
-//double circBuffer[N] = {0,0,0,0,0};	 //circular buffer
 double circBuffer[N] = {0};
 int writePtr = N - 1;	     //write pointer for circular buffer
+double transBuffer[N-1] = {0};	//used in transposed iir filter
+
  
 double previousSample = 0;
 double previousOutput = 0;		//for single pole filter lab5
@@ -154,9 +148,10 @@ void ISR_AIC(void){
 	double out;
 	samp = mono_read_16Bit();			//read sample from codec. reads L & R sample from audio port and creates a mono average. returns 16bit integer
 	
-	out = lowpassRCFilter(samp);	
+//	out = lowpassRCFilter(samp);	
 //	out = iirBPDirectForm2(samp);
-
+	out = iirBPTransposed(samp);
+	
 	mono_write_16Bit((Int16)out);		//write out rectified value. 
 }
 
@@ -215,5 +210,17 @@ double iirBPDirectForm2(double samp){
 	return sum;
 }
 
+double iirBPTransposed(double samp){
+	double sum = 0;
+	int i;
 
+	sum = samp*b[0]+transBuffer[0];
+	
+	for(i=1; i<N-1; i++){
+		transBuffer[i-1] = transBuffer[i] + samp*b[i]-a[i]*sum;
+	}
+	transBuffer[N-2] = samp*b[N-1]-a[N-1]*sum;
+	
+	return sum;
+}
 
