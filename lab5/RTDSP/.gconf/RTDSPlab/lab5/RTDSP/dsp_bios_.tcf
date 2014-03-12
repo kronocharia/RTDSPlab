@@ -14,6 +14,7 @@ bios.MEM.NOMEMORYHEAPS = 0;
 bios.MEM.instance("IRAM").createHeap = 1;
 bios.MEM.BIOSOBJSEG = prog.get("IRAM");
 bios.MEM.MALLOCSEG = prog.get("IRAM");
+bios.MEM.NOMEMORYHEAPS = 1;
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

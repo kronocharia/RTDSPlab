@@ -29,7 +29,7 @@ edge_freq = [2*280/fs 2*470/fs]  %filter normalised edge frequencies
 
 %[b,a] = ellip(order/2,pass_ripple,stop_attenuation,edge_freq); %original
 %num coeffs =5
-[b,a] = ellip(4,pass_ripple,stop_attenuation,edge_freq);
+[b,a] = ellip(,pass_ripple,stop_attenuation,edge_freq);
 %[b,a] = ellip(n,Rp,Rs,Wp,'ftype')
 %----order n 'ftype' digital elliptic filter with normalized passband edge frequency Wp, 
 %----Rp dB of ripple in the passband, and a stopband Rs dB down from the peak value in the passband.
@@ -58,7 +58,7 @@ for i=2:length(a)
 end;
 str_a = [str_a, '};'];
 
-fileID = fopen('RTDSP/coeff_jerry.txt' , 'w+');
+fileID = fopen('RTDSP/coeff_otherorder.txt' , 'w+');
 %%fprintf(fileID, '%s\n%s\n%s\n', str_b, str_a, str_len_b);   %assume a and b same length
 fprintf(fileID, 'double b[] = {');
 fprintf(fileID, ' %.15e,',b);

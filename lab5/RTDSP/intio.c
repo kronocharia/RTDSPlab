@@ -37,7 +37,7 @@
 // Some functions to help with writing/reading the audio ports when using interrupts.
 #include <helper_functions_ISR.h>
 
-#include "coeff.txt"	//contains filter coefficients b[]
+#include "coeff_jerry.txt"	//contains filter coefficients b[]
 
 // PI defined here for use in your code 
 #define PI 3.141592653589793
@@ -80,8 +80,10 @@ double iirBPTransposed(double);
 //*************************************Global Vars***********************************/
 const int sampling_freq = 8000;
 double circBuffer[N] = {0};
+//double circBuffer[N] = {0,0,0,0,0};
 int writePtr = N - 1;	     //write pointer for circular buffer
 double transBuffer[N-1] = {0};	//used in transposed iir filter
+//double transBuffer[N-1] = {0,0,0,0};
 
  
 double previousSample = 0;
@@ -90,7 +92,12 @@ const float RC= 0.001;		//constant for single pole filter
 //const double filterConstant =2*RC*sampling_freq;
 /********************************** Main routine ************************************/
 void main(){
-	
+	int j;
+	for (j=0; j < N-1; j++){
+		transBuffer[j] = 0;
+		circBuffer[j] = 0;
+	}
+	circBuffer[j] = 0;
 	// initialize board and the audio port
   	init_hardware();
 
