@@ -23,13 +23,13 @@ fs = 8000                   %sampling frequency
 %pass_ripple = (10^(0.5/20)-1)/(10^(0.5/20)+1); 
 %stop_gain = 10^(-25/20);
 
-pass_ripple = 0.5;      %in dB
+pass_ripple = 0.4;      %in dB
 stop_attenuation = 25;
 edge_freq = [2*280/fs 2*470/fs]  %filter normalised edge frequencies
 
 %[b,a] = ellip(order/2,pass_ripple,stop_attenuation,edge_freq); %original
 %num coeffs =5
-[b,a] = ellip(4,pass_ripple,stop_attenuation,edge_freq);
+[b,a] = ellip(3,pass_ripple,stop_attenuation,edge_freq);
 %[b,a] = ellip(n,Rp,Rs,Wp,'ftype')
 %----order n 'ftype' digital elliptic filter with normalized passband edge frequency Wp, 
 %----Rp dB of ripple in the passband, and a stopband Rs dB down from the peak value in the passband.

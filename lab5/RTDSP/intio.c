@@ -74,9 +74,9 @@ void init_hardware(void);
 void init_HWI(void);      		//interrupt settings
 void ISR_AIC(void);        		//interrupt function     
 
-double lowpassRCFilter(double);
-double iirBPDirectForm2(double);
-double iirBPTransposed(double);
+double lowpassRCFilter(double);	
+double iirBPDirectForm2(double);	//IIR Bandpass filter direct form ii
+double iirBPTransposed(double);		//IIR Bandpass filter direct form ii transposed
 //*************************************Global Vars***********************************/
 const int sampling_freq = 8000;
 double circBuffer[N] = {0};
@@ -168,7 +168,7 @@ double lowpassRCFilter(double samp){
 	double output =0;
 	
 	//Time domain implementation of filter of first order lowpass RC filter
-	output =  samp /17.0 + previousSample/17.0 - ((-15.0/17.0)*previousOutput);
+	output =  (samp+previousSample-(1-FILTER_CONST)*previousOutput)/(1+FILTER_CONST);
 	
 	//storing previous values (global vars) to feedback into filter
 	previousSample = samp;
@@ -180,26 +180,25 @@ double iirBPDirectForm2(double samp){
 
 	double sum = 0;
 	int i;
-/*	int readPtr = (writePtr+1)%N;
+/*	int readPtr = writePtr;
 
-	circBuffer[writePtr] = samp;	//
-
+	circBuffer[writePtr] = samp;	
 	for (i=1; i<N; i++){
-		circBuffer[writePtr] -= a[i]*circBuffer[readPtr];
 		if(++readPtr == N)
 			readPtr = 0;
+		circBuffer[writePtr] -= a[i]*circBuffer[readPtr];
 	}
 	
 	if (--writePtr == -1)
 		writePtr = N-1;
 	
 	for (i = 0; i < N; i++){
-		//filter maths
-        sum +=  b[i]*circBuffer[readPtr];
 		if (++readPtr == N)
 			readPtr = 0;
-	}*/
-	
+		//filter maths
+        sum +=  b[i]*circBuffer[readPtr];
+	}
+*/	
 	int readPtr = writePtr;
 	circBuffer[writePtr]=0;		//prevents oldest value from being used in loop calculation
 	
@@ -217,13 +216,13 @@ double iirBPDirectForm2(double samp){
 	return sum;
 }
 
-double iirBPTransposed(double samp){
+double iirBPTransposed(double samp){	
 	double sum = 0;
 	int i;
 
-	sum = samp*b[0]+transBuffer[0];
+	sum = samp*b[0]+transBuffer[0];		//calculate current output
 	
-	for(i=1; i<N-1; i++){
+	for(i=1; i<N-1; i++){				//sum up delay components with weighted input and output
 		transBuffer[i-1] = transBuffer[i] + samp*b[i]-a[i]*sum;
 	}
 	transBuffer[N-2] = samp*b[N-1]-a[N-1]*sum;
