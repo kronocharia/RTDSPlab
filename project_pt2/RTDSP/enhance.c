@@ -188,7 +188,7 @@ void process_frame(void)
 	/* copy input data from inBuffer into inFrame (starting from the pointer position) */ 
 	 
 	m=io_ptr0;
-    for (k=0;k<FFTLEN;k++)			//FFTLEN = 256
+    for (k=0;k<FFTLEN;k++)
 	{                           
 		inFrame[k] = inBuffer[m] * inWin[k]; 
 		if (++m >= CIRCBUFFLEN) m=0; /* wrap if required */
