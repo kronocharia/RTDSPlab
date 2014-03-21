@@ -58,6 +58,7 @@
 #define PI 3.141592653589793
 #define TFRAME FRAMEINC/FSAMP       /* time between calculation of each frame */
 #define MIN_NR 0.1
+#define ALPHA 20.0
 
 /******************************* Global declarations ********************************/
 
@@ -90,9 +91,11 @@ float *inWin, *outWin;              /* Input and output windows */
 complex *fft_input;					/* FFT of input */
 complex *fft_output;				/* FFT of output */
 float *fftMag_noise;				/* MAG FFT of Noise */
-float *fftMag_noiseReduction;		/* gain we multiply with the FFT of input */
+float *fft_gain;		/* gain we multiply with the FFT of input */
 float inGain, outGain;				/* ADC and DAC gains */ 
 float cpuFrac; 						/* Fraction of CPU time used */
+float alpha = ALPHA;
+float minNR = MIN_NR;
 volatile int io_ptr=0;              /* Input/ouput pointer for circular buffers */
 volatile int frame_ptr=0;           /* Frame pointer */
 
@@ -103,10 +106,18 @@ typedef struct  {
 } noiseBufferStruct;
 
 noiseBufferStruct* noiseBuffers;	/* ptr to array of noise buffer struct */
-int nIndex;							/*current noise buffer index */
-int numFrames;						/* counter for number of frames passed, 
+int nIndex = 0;							/*current noise buffer index */
+int numFrames = 0;						/* counter for number of frames passed, 
 										used to calculate noise buffer index */
+int prevNIndex = 0;  
 
+
+/*********test non-circular buffer********/
+float* M1;	//last element will be power
+float* M2;
+float* M3;
+float* M4;
+float* minM;
  /******************************* Function prototypes *******************************/
 void init_hardware(void);    		/* Initialize codec */ 
 void init_HWI(void);           		/* Initialize hardware interrupts */
@@ -134,7 +145,7 @@ void main()
     fft_input = (complex*)calloc(FFTLEN, sizeof(complex)); //Freq components of cleaned up speech
     
     fftMag_noise = (float*)calloc(FFTLEN, sizeof(float));	//Mag of Freq components of best noise guess
-    fftMag_noiseReduction = (float*)calloc(FFTLEN, sizeof(float));		//What we multiply input with to subtract noise
+    fft_gain = (float*)calloc(FFTLEN, sizeof(float));		//What we multiply input with to subtract noise
 	
 	/* intialise 2D array */
 	noiseBuffers = (noiseBufferStruct*)calloc(NBUFFLEN, sizeof(noiseBufferStruct*));	//an array of noiseBuffer struct
@@ -143,6 +154,12 @@ void main()
 		noiseBuffers[ii].fSpectrum = (float*) calloc(NFREQ, sizeof(float));
 		noiseBuffers[ii].power = 0;
 	}
+	
+	M1	= (float *) calloc(FFTLEN, sizeof(float));
+    M2	= (float *) calloc(FFTLEN, sizeof(float));
+    M3	= (float *) calloc(FFTLEN, sizeof(float));
+    M4	= (float *) calloc(FFTLEN, sizeof(float));
+   	minM= (float *) calloc(FFTLEN, sizeof(float));
 	/*	noiseBuffer = calloc(OVERSAMP, sizeof(float *));
 	for(ii = 0; ii < NFREQ; ii++) { 
 	 	noiseBuffer[ii] = calloc(NFREQ, sizeof(float));
@@ -210,10 +227,8 @@ void process_frame(void)
 {
 	int k, m; 
 	int io_ptr0;
-	int prevNIndex = nIndex;   
-	float minNR = MIN_NR;
-	int minNIndex;
-
+	//int minNIndex;
+	float *tmpM;
 	
 	/* work out fraction of available CPU time used by algorithm */    
 	cpuFrac = ((float) (io_ptr & (FRAMEINC - 1)))/FRAMEINC;  
@@ -245,40 +260,74 @@ void process_frame(void)
 	ouptut with no processing */	
 	for (k=0;k<FFTLEN;k++){
 		fft_input[k].r = inFrame[k]; 
+		fft_input[k].i = 0;
 	}
 	
 	//TODO rename fft_input into something like intermediate workings 
 									
-  	fft(FFTLEN,fft_input);	
+  	fft(FFTLEN,fft_input);
   	
-  	
+  	//*************circular noise buffer***********//
+  	/*	
   	// calculate current index for noise buffer
-  	if(++numFrames == FRAMESLIMIT){				//FRAMESLIMIT = 80
+  	if(++numFrames >= FRAMESLIMIT){				//FRAMESLIMIT = 80
   		numFrames = 0;
   		
-  		if(++nIndex == NBUFFLEN)	
+  		if(++nIndex >= NBUFFLEN)	
   			nIndex = 0;
   		// reset buffer for new index
-  		for(k=0; k<NFREQ; k++){
-  			noiseBuffers[prevNIndex].power += noiseBuffers[prevNIndex].fSpectrum[k];	
+  		for(k=0; k<FFTLEN; k++){	
   			noiseBuffers[nIndex].fSpectrum[k] = 0;
   		}
-  		noiseBuffers[prevNIndex].power = 0;
+  		noiseBuffers[nIndex].power = 0;
 	}
-
+	
 	// Store stuff in min noise buffer 
   	for(k=0; k<NFREQ; k++){
-  		if(cabs(fft_input[k]) < ((noiseBuffers[nIndex]).fSpectrum[k]))
-  			noiseBuffers[nIndex].fSpectrum[k] = cabs(fft_input[k]);	
+  		if(((noiseBuffers[nIndex]).fSpectrum[k]) == 0 || cabs(fft_input[k]) < ((noiseBuffers[nIndex]).fSpectrum[k]))
+  			noiseBuffers[nIndex].fSpectrum[k] = cabs(fft_input[k]);
+  		noiseBuffers[nIndex].power += noiseBuffers[nIndex].fSpectrum[k];	
   	}
   	
 	minNIndex = getMinNoiseBufferIndex(noiseBuffers, nIndex);
-	//N[k] = min(noiseBuffer); //should be a float						//TODO add alpha somewhere :D TODO find out what alpha is
 	
+	for(k=0; k<FFTLEN; k++){
+		fft_gain[k] = 1.0 - (ALPHA*((noiseBuffers[minNIndex]).fSpectrum[k])/cabs(fft_input[k]));			// IS CABS CORRECT???
+		fft_gain[k] = maxOfFloats( MIN_NR,fft_gain[k]); 			//where minNR is lambda in note, 
+		fft_gain[k] = 1.0;
+		fft_input[k] = rmul(fft_gain[k], fft_input[k]);
+	}*/
+	
+		//****non-circular noise buffers************//
+	if(++numFrames >= FRAMESLIMIT){
+		numFrames = 0;
+		tmpM = M4;
+		M4 = M3;
+		M3 = M2;
+		M2 = M1;
+		M1 = tmpM;
+	}
 	for(k=0; k<NFREQ; k++){
-		fftMag_noiseReduction[k] = 1.0 - (((noiseBuffers[minNIndex]).fSpectrum[k])/cabs(fft_input[k]));			// IS CABS CORRECT???
-		fftMag_noiseReduction[k] = maxOfFloats( minNR,fftMag_noiseReduction[k]); 			//where minNR is lambda in note, 
-		fft_input[k] = rmul(5*(fftMag_noiseReduction[k]), *fft_input);
+		if(numFrames == 0){
+			M1[k] = cabs(fft_input[k]);
+			minM[k] = M4[k];
+	  		if(minM[k] > M3[k])
+	  			minM[k] = M3[k];
+	  		if(minM[k] > M2[k])
+	  			minM[k] = M2[k];
+	  		if(minM[k] > M1[k])
+	  			minM[k] = M1[k];
+		}
+		else if(cabs(fft_input[k]) < M1[k]){
+  			M1[k] = cabs(fft_input[k]);
+  			if(minM[k] > M1[k])
+	  			minM[k] = M1[k];
+		}
+
+		fft_gain[k] = 1.0 - (alpha*(minM[k])/cabs(fft_input[k]));			// IS CABS CORRECT???
+		fft_gain[k] = maxOfFloats( minNR,fft_gain[k]); 			//where minNR is lambda in note, 
+		fft_input[k] = rmul(fft_gain[k], fft_input[k]);
+		fft_input[FFTLEN-k] = fft_input[k];
 	}
 
 	ifft(FFTLEN,fft_input);  //TODO ask about the fft and why its half, and what do we do with the other empty array size.
@@ -327,15 +376,15 @@ void ISR_AIC(void)
 }
 
 /************************************************************************************/
-int getMinNoiseBufferIndex(noiseBufferStruct* noiseBuffers, int currentIndex){ //gives the mininum mag of the 4 buffers
+int getMinNoiseBufferIndex(noiseBufferStruct* noiseBuffers1, int currentIndex){ //gives the mininum mag of the 4 buffers
 	int i;
 	int minIndex = -1;
 	float minPower = -1;
 	
 	for(i=0; i<NBUFFLEN; i++){
 		if(i != currentIndex){
-			if(minPower < 0 || noiseBuffers[i].power < minPower)
-				minPower = noiseBuffers[i].power;
+			if(minPower < 0 || noiseBuffers1[i].power < minPower)
+				minPower = noiseBuffers1[i].power;
 				minIndex = i;
 		}
 	}
@@ -347,7 +396,7 @@ float maxOfFloats(float arg1, float arg2){ //returns arg1 if they are the same
 	float result;
 	if (arg1 >= arg2)
 		result = arg1;
-	if (arg1 < arg2)
+	else
 		result = arg2;
 	return result;
 }
