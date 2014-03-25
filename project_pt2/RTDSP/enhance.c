@@ -402,25 +402,25 @@ void process_frame(void)
         else if (enhancement4or5 == 5){
                 switch(enhancement5){
                 case 1:
-                    tmpResult = sqrt((alpha*(minM[k])*(alpha*(minM[k])))/cabs2Input);
-                    fft_gain[k] = 1.0 - tmpResult;
+                    tmpResult = ((alpha*alpha*(minM[k])*(minM[k]))/cabs2Input);
+                    fft_gain[k] = sqrt(1.0 - tmpResult);
                     minNR = MIN_NR*tmpResult;
                     break;
                 case 2:
-                    fft_gain[k] = 1.0 - sqrt((alpha*(minM[k])*(alpha*(minM[k]))/cabs2Input);
+                    fft_gain[k] = sqrt(1.0 - ((alpha*alpha*(minM[k])*(minM[k]))/cabs2Input));
                     minNR = MIN_NR*(_lowPassK/cabsInput);
                     break;
                 case 3:
-                    tmpResult = sqrt((alpha*(minM[k])*(alpha*(minM[k])/_lowPassPowK))
-                    fft_gain[k] = 1.0 - tmpResult; 
+                    tmpResult = ((alpha*alpha*(minM[k])*(minM[k]))/_lowPassPowK);
+                    fft_gain[k] = sqrt(1.0 - tmpResult); 
                     minNR = MIN_NR*tmpResult;
                     break;
                 case 4:
-                    fft_gain[k] = 1.0 - sqrt((alpha*(minM[k])*(alpha*(minM[k])))/_lowPassPowK); 
+                    fft_gain[k] = sqrt(1.0 - ((alpha*alpha*(minM[k])*(minM[k]))/_lowPassPowK)); 
                     minNR = MIN_NR;
                     break;
                 default:
-                    fft_gain[k] = 1.0 - (alpha*(minM[k])*(alpha*(minM[k])/cabs2Input);    
+                    fft_gain[k] = sqrt(1.0 - ((alpha*alpha*(minM[k])*(minM[k]))/cabs2Input));    
                     minNR = MIN_NR;
                     break;
             }
@@ -508,3 +508,5 @@ float maxOfFloats(float arg1, float arg2){ //returns arg1 if they are the same
         result = arg2;
     return result;
 }
+
+//best 1, 3, 4.3
