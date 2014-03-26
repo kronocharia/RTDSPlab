@@ -1,5 +1,5 @@
-/*************************************************************************************
-                   DEPARTMENT OF ELECTRICAL AND ELECTRONIC ENGINEERING
+ /*************************************************************************************
+                   DEPARTMENT OF ELECTRICAL AND RAINBOW FUNTIME ENGINEERING
                                  IMPERIAL COLLEGE LONDON 
 
                       EE 3.19: Real Time Digital Signal Processing
@@ -16,10 +16,7 @@
                              By Danny Harvey: 21 July 2006
                              Updated for use on CCS v4 Sept 2010
  ************************************************************************************/
-/*
- *  You should modify the code so that a speech enhancement project is built 
- *  on top of this template.
- */
+
 /**************************** Pre-processor statements ******************************/
 //  library required when using calloc
 #include <stdlib.h>
@@ -57,9 +54,10 @@
 // PI defined here for use in your code 
 #define PI 3.141592653589793
 #define TFRAME (FRAMEINC/FSAMP)       /* time between calculation of each frame */
-#define MIN_NR 0.1          //min noise reduction value (lambda)
-#define ALPHA 20.0          //oversubraction factor for noise
-#define TAU 0.04            //time constant for input low pass filter <0ms> -- for enhancement 1
+//#define MIN_NR 0.25          //min noise reduction value (lambda)
+//#define OVER_EST_FACTOR 2   //over-estimation factor for alpha --for enhancement 6 
+#define ALPHA 4.0          //oversubraction factor for noise
+#define TAU 0.05            //time constant for input low pass filter <0ms> -- for enhancement 1
  
 /******************************* Global declarations ********************************/
 
@@ -91,12 +89,14 @@ float *inWin, *outWin;              /* Input and output windows */
 
 complex *fft_input;                 /* FFT of input */
 complex *fft_output;                /* FFT of output */
-float *fftMag_noise;                /* MAG FFT of Noise */
+complex **recentThreeFrames;         // Last three frames
+
+//float *fftMag_noise;                /* MAG FFT of Noise */
 float *fft_gain;                    /* gain we multiply with the FFT of input */
 float inGain, outGain;              /* ADC and DAC gains */ 
 float cpuFrac;                      /* Fraction of CPU time used */
 float alpha = ALPHA;                /* Oversubtraction factor */
-float minNR;                /* Minimum noise reduction */
+float minNR;               			/* Minimum noise reduction */
 volatile int io_ptr=0;              /* Input/ouput pointer for circular buffers */
 volatile int frame_ptr=0;           /* Frame pointer */
 
@@ -106,6 +106,12 @@ typedef struct  {
     float power;            //magnitude of the whole freq spectrum
 } noiseBufferStruct;
 */
+typedef struct  {
+    complex s[3];                      
+} Last3Freq;
+Last3Freq autoRecent3Frames[FFTLEN];
+
+
 //noiseBufferStruct* noiseBuffers;  /* ptr to array of noise buffer struct */
 int nIndex = 0;                         /*current noise buffer index */
 int numFrames = 0;                      /* counter for number of frames passed, used to calculate noise buffer index */
@@ -117,7 +123,10 @@ float *lowPass;           //low passed filtered inpt estimate for current frame 
 //********** Enhancement parameters *************//
 float inputLPF_k;   //low pass filter time constant pole in z plane for input frames (k)
 float noiseLPF_k;   //low pass filter time constant pole in z plane for noise estimate
-
+float inputLPF4_k;   //alternate for enhancement 4
+float noiseLPF4_k;   
+float tau4 = 0.2; //tau for enhance 4
+float MIN_NR = 0.08; //lambda down here to change in watch
 //********* non-circular noise buffers ********//
 float* M1;      //current noise buffer
 float* M2;
@@ -126,12 +135,17 @@ float* M4;
 float* minM;    //stores minimum accross all M
 
 //********** Enhancement switches ************/
-volatile short enhancement1or2 = 1;     //1->enhancement1, 2->enhancement2, else->default
-volatile short enhancement4or5 = 0;     //4->enhancement4, 5->enhancement5, else->default
-volatile short enhancement3 = 0;        //1->enhancement3, else->enhancement3 off
-volatile short enhancement4 = 0;        //cases 0-4
+volatile short enhancement1or2 = 2;     //1->enhancement1, 2->enhancement2, else->default
+volatile short enhancement4or5 = 4;     //4->enhancement4, 5->enhancement5, else->default
+volatile short enhancement3 = 1;        //1->enhancement3, else->enhancement3 off
+volatile short enhancement4 = 2;        //cases 0-4
 volatile short enhancement5 = 0;        //cases 0-4
+volatile short enhancement6 = 0;
+volatile short enhancement8 = 0;
 volatile short original = 0;            //overwrites everything, play unprocessed input
+volatile short enabled = 1;
+volatile short e5a = 0; //enhance5,in eaxmple
+volatile short e54 = 0; //enhance5.4
 
  /******************************* Function prototypes *******************************/
 void init_hardware(void);           /* Initialize codec */ 
@@ -140,13 +154,18 @@ void ISR_AIC(void);                 /* Interrupt service routine for codec */
 void process_frame(void);           /* Frame processing routine */
 //int getMinNoiseBufferIndex(noiseBufferStruct*, int);  /*find min noise power buffer index*/
 float maxOfFloats(float,float);     
+float noiseRatioThresh = 0.5;
+int OVER_EST_FACTOR = 2;
+float tau = TAU;
+int kkk=1;
 /********************************** Main routine ************************************/
 void main()
 {
 
     int k; // used in various for loops
     int ii; //used in 2d array init
-    int tau = TAU;  //time constant for input low pass filter --enhancement 1
+    //int tau = TAU;  //time constant for input low pass filter --enhancement 1
+    
 /*  Initialize and zero fill arrays */  
 
     inBuffer    = (float *) calloc(CIRCBUFFLEN, sizeof(float)); /* Input array */
@@ -159,7 +178,7 @@ void main()
     fft_input = (complex*)calloc(FFTLEN, sizeof(complex));  //Freq components of input
     lowPass = (float*)calloc(FFTLEN, sizeof(float));      //Low passed of freq components of input
     
-    fftMag_noise = (float*)calloc(FFTLEN, sizeof(float));   //Mag of Freq components of best noise guess
+  //  fftMag_noise = (float*)calloc(FFTLEN, sizeof(float));   //Mag of Freq components of best noise guess
     fft_gain = (float*)calloc(FFTLEN, sizeof(float));       //What we multiply input with to subtract noise
     
     /* intialise 2D array */
@@ -169,8 +188,15 @@ void main()
         noiseBuffers[ii].fSpectrum = (float*) calloc(NFREQ, sizeof(float));
         noiseBuffers[ii].power = 0;
     }*/
+    recentThreeFrames = (complex**)calloc(FFTLEN, sizeof(complex*));  //an array of compelex struct
+    for(ii = 0; ii<3; ii++){
+        recentThreeFrames[ii] = (complex*) calloc(FFTLEN, sizeof(complex));
+    }
+
     inputLPF_k = exp(-TFRAME/tau); 
     noiseLPF_k = exp(-TFRAME/tau);
+    inputLPF4_k = exp(-TFRAME/tau4); 
+    noiseLPF4_k = exp(-TFRAME/tau4);
     M1  = (float *) calloc(FFTLEN, sizeof(float));
     M2  = (float *) calloc(FFTLEN, sizeof(float));
     M3  = (float *) calloc(FFTLEN, sizeof(float));
@@ -244,11 +270,15 @@ void process_frame(void)
     int io_ptr0;
     float cabsInput;
     float cabs2Input;
-    float _lowPassK;
-    float _lowPassPowK;
+    static float _lowPassK;
+    static float _lowPassPowK;
     float *tmpM;
     float tmpMinNoise;
     float tmpResult;
+    static float noiseRatio;
+    static float prevNoiseRatio;
+    
+    complex tmpMin3Frames;
     
     /* work out fraction of available CPU time used by algorithm */    
     cpuFrac = ((float) (io_ptr & (FRAMEINC - 1)))/FRAMEINC;  
@@ -278,47 +308,13 @@ void process_frame(void)
     
     /* please add your code, at the moment the code simply copies the input to the 
     ouptut with no processing */    
-    for (k=0;k<FFTLEN;k++){
+    for (k=0;k<FFTLEN;k++){             //copy inFrame to working set for FFT
         fft_input[k].r = inFrame[k]; 
         fft_input[k].i = 0;
     }
-    
-    //TODO rename fft_input into something like intermediate workings 
-                                    
+                                      
     fft(FFTLEN,fft_input);
-    
-    //*************circular noise buffer***********//
-    /*  
-    // calculate current index for noise buffer
-    if(++numFrames >= FRAMESLIMIT){             //FRAMESLIMIT = 80
-        numFrames = 0;
-        
-        if(++nIndex >= NBUFFLEN)    
-            nIndex = 0;
-        // reset buffer for new index
-        for(k=0; k<FFTLEN; k++){    
-            noiseBuffers[nIndex].fSpectrum[k] = 0;
-        }
-        noiseBuffers[nIndex].power = 0;
-    }
-    
-    // Store stuff in min noise buffer 
-    for(k=0; k<NFREQ; k++){
-        if(((noiseBuffers[nIndex]).fSpectrum[k]) == 0 || cabs(fft_input[k]) < ((noiseBuffers[nIndex]).fSpectrum[k]))
-            noiseBuffers[nIndex].fSpectrum[k] = cabs(fft_input[k]);
-        noiseBuffers[nIndex].power += noiseBuffers[nIndex].fSpectrum[k];    
-    }
-    
-    minNIndex = getMinNoiseBufferIndex(noiseBuffers, nIndex);
-    
-    for(k=0; k<FFTLEN; k++){
-        fft_gain[k] = 1.0 - (ALPHA*((noiseBuffers[minNIndex]).fSpectrum[k])/cabs(fft_input[k]));            // IS CABS CORRECT???
-        fft_gain[k] = maxOfFloats( MIN_NR,fft_gain[k]);             //where minNR is lambda in note, 
-        fft_gain[k] = 1.0;
-        fft_input[k] = rmul(fft_gain[k], fft_input[k]);
-    }*/
-    
-
+  
     //************** shuffle noise buffers *******************//
     if(++numFrames >= FRAMESLIMIT){
         numFrames = 0;
@@ -334,11 +330,13 @@ void process_frame(void)
         cabsInput = cabs(fft_input[k]); //|X(w)|
         cabs2Input = cabsInput*cabsInput; //|X(w)|**2
 
-        _lowPassK = (1-inputLPF_k)*cabsInput + inputLPF_k*_lowPassK;
-        _lowPassPowK = sqrt((1-inputLPF_k)*cabs2Input + inputLPF_k*_lowPassPowK*_lowPassPowK);
-
+    
+        _lowPassK = (1-inputLPF4_k)*cabsInput + inputLPF4_k*_lowPassK;
+        _lowPassPowK = sqrt((1-inputLPF4_k)*cabs2Input + inputLPF4_k*_lowPassPowK*_lowPassPowK);
+    
+		//************** ENHANCEMENT 1/2 *****************//
         if (enhancement1or2 == 1)
-            lowPass[k] = (1-inputLPF_k)*cabsInput + inputLPF_k*lowPass[k]; //lowpass formula from notes
+            lowPass[k] = (1-inputLPF_k)*cabsInput + kkk*inputLPF_k*lowPass[k]; //lowpass formula from notes
             // lowpass[k] = _lowPassK;
         else if (enhancement1or2 == 2)
             lowPass[k] = sqrt((1-inputLPF_k)*cabs2Input+ inputLPF_k*lowPass[k]*lowPass[k]); //lowpass on power
@@ -346,9 +344,9 @@ void process_frame(void)
         else
             lowPass[k] = cabsInput;               //doesnt LPF at all
 
-        if(numFrames == 0){  // if first frame after swapping noise buffer pointers
-            M1[k] = lowPass[k];       //then youre *hapless laughter* so youre filling the entire M1 with the whole input frame. lowPass[k] is either the whole input frame OR lowpassed version based off the enhancement case
-                                //min noise is just the frame
+        if(numFrames == 0){  		// if first frame after swapping noise buffer pointers
+            M1[k] = lowPass[k];     //then youre *hapless laughter* so youre filling the entire M1 with the whole input frame. lowPass[k] is either the whole input frame OR lowpassed version based off the enhancement case
+                                	//min noise is just the frame
 
             tmpMinNoise = M4[k];        //this finds the min noise out of the the buffers M4-M2 + a tiny bit M1 cos its still doing it?!! for the particular frequency k
             if(tmpMinNoise > M3[k])
@@ -368,21 +366,39 @@ void process_frame(void)
         else
             tmpMinNoise = minM[k];
         
+       
         //************* ENHANCEMENT 3 *************//
         if(enhancement3 == 1)       //low pass filter noise estimate
             minM[k] = (1- noiseLPF_k)*tmpMinNoise + noiseLPF_k*minM[k]; //lowpass formula from notes
         else
             minM[k] = tmpMinNoise;
+        //************* ENHANCEMENT 6 *************// 
+        if(enhancement6 == 1) 
+           // alpha = (1.0-((float)k/(float)NFREQ))*OVER_EST_FACTOR*ALPHA;  original
+            
+            if (noiseRatio < 0.1) 
+                alpha = 1;
+            else if (noiseRatio > 0.562)
+                alpha = 5;
+
+            else
+                alpha = 8.658*noiseRatio + 0.134;
         
+
+        prevNoiseRatio = noiseRatio;
+        noiseRatio = (alpha*(minM[k])/cabsInput); //|N(w)|/|X(w)|
         //************* ENHANCEMENT 4 *************//
+   
+        
         if (enhancement4or5 == 4) {
             switch(enhancement4){
-                case 1:
-                    fft_gain[k] = 1.0 - (alpha*(minM[k])/cabsInput);      
+                case 1:      
+                    fft_gain[k] = 1.0 - noiseRatio;      
                     minNR = MIN_NR*(alpha*(minM[k])/cabsInput);
                     break;
                 case 2:
-                    fft_gain[k] = 1.0 - (alpha*(minM[k])/cabsInput);
+
+                    fft_gain[k] = 1.0 - noiseRatio;
                     minNR = MIN_NR*(lowPass[k]/cabsInput);
                     break;
                 case 3:
@@ -394,20 +410,56 @@ void process_frame(void)
                     minNR = MIN_NR;
                     break;
                 default:
-                    fft_gain[k] = 1.0 - (alpha*(minM[k])/cabsInput);    
+                    fft_gain[k] = 1.0 - (noiseRatio);    
                     minNR = MIN_NR;
                     break;
             }
         }
+
+
+        else if (e5a == 1) {
+            fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/cabs2Input);
+            minNR = MIN_NR;
+        }
+        else if (e54 == 1) {
+            fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/_lowPassPowK);
+            minNR = MIN_NR;
+        }
+
         else if (enhancement4or5 == 5){
-                switch(enhancement5){
+        	 switch(enhancement5){
+                case 1:      
+                    fft_gain[k] = 1.0 - noiseRatio;      
+                    minNR = MIN_NR*(alpha*(minM[k])/cabsInput);
+                    break;
+                case 2:
+
+                    fft_gain[k] = 1.0 - noiseRatio;
+                    minNR = MIN_NR*(lowPass[k]/cabsInput);
+                    break;
+                case 3:
+                    fft_gain[k] = 1.0 - (alpha*(minM[k])/_lowPassK); 
+                    minNR = MIN_NR*(alpha*(minM[k])/_lowPassK);
+                    break;
+                case 4:
+                    fft_gain[k] = 1.0 - (alpha*(minM[k])/_lowPassK); 
+                    minNR = MIN_NR;
+                    break;
+                default:
+                    fft_gain[k] = 1.0 - (noiseRatio);    
+                    minNR = MIN_NR;
+                    break;
+            }
+      /*          switch(enhancement5){
                 case 1:
-                    tmpResult = ((alpha*alpha*(minM[k])*(minM[k]))/cabs2Input);
+                  //  tmpResult = ((alpha*alpha*(minM[k])*(minM[k]))/cabs2Input);
+                    tmpResult = noiseRatio*noiseRatio;
                     fft_gain[k] = sqrt(1.0 - tmpResult);
                     minNR = MIN_NR*tmpResult;
                     break;
                 case 2:
-                    fft_gain[k] = sqrt(1.0 - ((alpha*alpha*(minM[k])*(minM[k]))/cabs2Input));
+                    //fft_gain[k] = sqrt(1.0 - ((alpha*alpha*(minM[k])*(minM[k]))/cabs2Input));
+                    fft_gain[k] = sqrt(1.0 - (noiseRatio*noiseRatio));
                     minNR = MIN_NR*(_lowPassK/cabsInput);
                     break;
                 case 3:
@@ -423,29 +475,69 @@ void process_frame(void)
                     fft_gain[k] = sqrt(1.0 - ((alpha*alpha*(minM[k])*(minM[k]))/cabs2Input));    
                     minNR = MIN_NR;
                     break;
-            }
+            }*/
         }
+        
         else {
-            fft_gain[k] = 1.0 - (alpha*(minM[k])/cabsInput);    
+            fft_gain[k] = 1.0 - noiseRatio;    
             minNR = MIN_NR;
         }
+        
         //vanilla g(w) which is the gain for each frequency
         fft_gain[k] = maxOfFloats(minNR,fft_gain[k]);           //where minNR is lambda in note, 
-        fft_input[k] = rmul(fft_gain[k], fft_input[k]);
-        fft_input[FFTLEN-k] = fft_input[k];
-    }
+        
+        //************* ENHANCEMENT 8 ***************//
+        if (enhancement8==1) {
+    		// recentThreeFrames[k][2] = recentThreeFrames[k][1];
+    		// recentThreeFrames[k][1] = recentThreeFrames[k][0];
+      //   	recentThreeFrames[k][0] = rmul(fft_gain[k], fft_input[k]);   
+            autoRecent3Frames[k].s[2] = autoRecent3Frames[k].s[1];
+            autoRecent3Frames[k].s[1] = autoRecent3Frames[k].s[0];
+            autoRecent3Frames[k].s[0] = rmul(fft_gain[k], fft_input[k]);     
+
+	        if ( prevNoiseRatio > noiseRatioThresh) {	
+	        // enabled = 0;
+         //    if (enabled == 1){ 
+
+	            // tmpMin3Frames = recentThreeFrames[k][0];
+	            // if (cabs(tmpMin3Frames) > cabs(recentThreeFrames[k][1]))
+	            //     tmpMin3Frames = recentThreeFrames[k][1];
+	            // if (cabs(tmpMin3Frames) > cabs(recentThreeFrames[k][2]))
+	            //     tmpMin3Frames = recentThreeFrames[k][2];
+
+                tmpMin3Frames = autoRecent3Frames[k].s[0];
+                if (cabs(tmpMin3Frames) > cabs(autoRecent3Frames[k].s[1]))
+                    tmpMin3Frames = autoRecent3Frames[k].s[1];
+                if (cabs(tmpMin3Frames) > cabs(autoRecent3Frames[k].s[2]))
+                    tmpMin3Frames = autoRecent3Frames[k].s[2];
+	
+	            fft_input[k] = tmpMin3Frames;
+	        }
+	        else {
+	            //fft_input[k] = recentThreeFrames[k][1];
+                fft_input[k] = autoRecent3Frames[k].s[1];
+	        }
+	    }
+	    //enhancement 8 off
+		else{
+	        fft_input[k] = rmul(fft_gain[k], fft_input[k]);
+		}
+		
+		fft_input[FFTLEN-k] = fft_input[k];		//symmetric copy
+    }//end of giantfor loop iterating over frequencies
+
 
     ifft(FFTLEN,fft_input);  //TODO ask about the fft and why its half, and what do we do with the other empty array size.
-    
-    if (original == 1)
-        for (k=0;k<FFTLEN;k++) //loop over the current frame                           
-            outFrame[k] = inFrame[k];// copy input straight into output  
-    
-    for (k=0;k<FFTLEN;k++){ //loop over the current frame                           
-        outFrame[k] = (fft_input[k].r);// copy input straight into output  
-    } 
-    
 
+    if (original == 1) {
+        for (k=0;k<FFTLEN;k++) //loop over the current frame                           
+            outFrame[k] = inFrame[k];// copy input straight into output 
+    }
+    else{ 
+	    for (k=0;k<FFTLEN;k++){ //loop over the current frame                           
+	            outFrame[k] = (fft_input[k].r);// copy input straight into output  
+	    } 
+    }
     /********************************************************************************/
     
     /* multiply outFrame by output window and overlap-add into output buffer */  
