@@ -416,7 +416,7 @@ void process_frame(void)
             }
         }
 
-        else if (enhancement4or5 = 6) {
+        else if (enhancement4or5 == 6) {
             switch(e5a){
                 case  0:
                     fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/cabs2Input);
