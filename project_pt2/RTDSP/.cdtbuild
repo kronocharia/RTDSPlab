@@ -73,6 +73,9 @@
 <resourceConfiguration exclude="true" id="com.ti.ccstudio.buildDefinitions.C6000.Debug.2073104593./RTDSP/frame.c" name="frame.c" rcbsApplicability="disable" resourcePath="/RTDSP/frame.c" toolsToInvoke="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785./RTDSP/frame.c">
 <tool id="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785./RTDSP/frame.c" name="C6000 Compiler" superClass="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785"/>
 </resourceConfiguration>
+<resourceConfiguration exclude="false" id="com.ti.ccstudio.buildDefinitions.C6000.Debug.2073104593./RTDSP/enhance.c" name="enhance.c" rcbsApplicability="disable" resourcePath="/RTDSP/enhance.c" toolsToInvoke="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785./RTDSP/enhance.c">
+<tool id="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785./RTDSP/enhance.c" name="C6000 Compiler" superClass="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.compilerDebug.2094039785"/>
+</resourceConfiguration>
 </configuration>
 <configuration artifactExtension="out" artifactName="RTDSP" description="" id="com.ti.ccstudio.buildDefinitions.C6000.Release.1245343851" name="Release" parent="com.ti.ccstudio.buildDefinitions.C6000.Release">
 <toolChain id="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.ReleaseToolchain.1099623593" name="TI Code Generation Tools" superClass="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.ReleaseToolchain" targetTool="com.ti.ccstudio.buildDefinitions.C6000_6.1.exe.linkerRelease.134379256">
