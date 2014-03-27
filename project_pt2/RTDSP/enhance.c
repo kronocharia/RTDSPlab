@@ -416,29 +416,14 @@ void process_frame(void)
             }
         }
 
-        else if (enhancement4or5 == 6) {
-            switch(e5a){
-                case  0:
-                    fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/cabs2Input);
-                    minNR = MIN_NR;
-                    break;
-                case 1:
-                    fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio/cabs2Input));
-                    minNR = (noiseRatio*noiseRatio/cabs2Input);
-                    break;
-                case 2:
-                    fft_gain[k] = sqrt(1-(((lowPass[k])*(lowPass[k]))/cabs2Input));
-                    minNR = (noiseRatio*noiseRatio/cabs2Input);
-                    break;
-                case 3:
-                    fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/((lowPass[k])*(lowPass[k])));
-                    minNR = (noiseRatio*noiseRatio)/((lowPass[k])*(lowPass[k]));
-                    break;
-                case 4:
-                    fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/_lowPassPowK);
-                    minNR = MIN_NR;
-                    break;
-            }
+
+        else if (e5a == 1) {
+            fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/cabs2Input);
+            minNR = MIN_NR;
+        }
+        else if (e54 == 1) {
+            fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/_lowPassPowK);
+            minNR = MIN_NR;
         }
 
         else if (enhancement4or5 == 5){
@@ -525,7 +510,7 @@ void process_frame(void)
                     tmpMin3Frames = autoRecent3Frames[k].s[1];
                 if (cabs(tmpMin3Frames) > cabs(autoRecent3Frames[k].s[2]))
                     tmpMin3Frames = autoRecent3Frames[k].s[2];
-	
+
 	            fft_input[k] = tmpMin3Frames;
 	        }
 	        else {
@@ -537,7 +522,7 @@ void process_frame(void)
 		else{
 	        fft_input[k] = rmul(fft_gain[k], fft_input[k]);
 		}
-		
+
 		fft_input[FFTLEN-k] = fft_input[k];		//symmetric copy
     }//end of giantfor loop iterating over frequencies
 
@@ -615,5 +600,3 @@ float maxOfFloats(float arg1, float arg2){ //returns arg1 if they are the same
         result = arg2;
     return result;
 }
-
-//best 1, 3, 4.3
