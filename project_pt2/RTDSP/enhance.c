@@ -370,14 +370,21 @@ void process_frame(void)
         //************* ENHANCEMENT 6 *************// 
         if(enhancement6 == 1) 
 
-            
+            /*
             if (pureNoiseRatio < 0.1) 
                 alpha = 1;
             else if (pureNoiseRatio > 0.562)
                 alpha = 5;
 
             else
-                alpha = 8.658*pureNoiseRatio + 0.134;
+                alpha = 8.658*pureNoiseRatio + 0.134;*/
+                
+            if (pureNoiseRatio < 0.1)
+            	alpha = 1;
+            else if (pureNoiseRatio > 1.78)
+            	alpha = 5;
+            else
+            	alpha = 3*log10f(pureNoiseRatio) +4;    
         
 
         prevNoiseRatio = noiseRatio;
