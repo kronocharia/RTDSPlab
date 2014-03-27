@@ -416,14 +416,29 @@ void process_frame(void)
             }
         }
 
-
-        else if (e5a == 1) {
-            fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/cabs2Input);
-            minNR = MIN_NR;
-        }
-        else if (e54 == 1) {
-            fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/_lowPassPowK);
-            minNR = MIN_NR;
+        else if (enhancement4or5 = 6) {
+            switch(e5a){
+                case  0:
+                    fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/cabs2Input);
+                    minNR = MIN_NR;
+                    break;
+                case 1:
+                    fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio/cabs2Input));
+                    minNR = (noiseRatio*noiseRatio/cabs2Input);
+                    break;
+                case 2:
+                    fft_gain[k] = sqrt(1-(((lowPass[k])*(lowPass[k]))/cabs2Input));
+                    minNR = (noiseRatio*noiseRatio/cabs2Input);
+                    break;
+                case 3:
+                    fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/((lowPass[k])*(lowPass[k])));
+                    minNR = (noiseRatio*noiseRatio)/((lowPass[k])*(lowPass[k]));
+                    break;
+                case 4:
+                    fft_gain[k] = sqrt(1-(noiseRatio*noiseRatio)/_lowPassPowK);
+                    minNR = MIN_NR;
+                    break;
+            }
         }
 
         else if (enhancement4or5 == 5){
